@@ -28,7 +28,6 @@ kepttrials = true;
 freqs = T.freq{1};
 nfreqs = size(spctrm{1},4);
 if kepttrials
-    updateWaitbar = waitbarParfor(length(spctrm)*length(chars), "Calculate characteristics...");
     strength = zeros(length(spctrm), nfreqs);
     SWP = zeros(length(spctrm), nfreqs);
     C = SWP;
@@ -45,20 +44,16 @@ if kepttrials
             else
                 strength(i,:) = nanmedian(nanmean(bv_multisquareform(thresh_spctrm),1),3);
             end
-            updateWaitbar()
         end
         if ismember('SWP', chars)
             SWP(i,:) = nanmean(gr_calculateSmallworldPropensityWs(thresh_spctrm));
-            updateWaitbar()
         end
         if ismember('Lnrm', chars)
             lambdas(i,:) = nanmean(gr_calculateNormalizedPathLength(thresh_spctrm, 'weighted'));
-            updateWaitbar()
         end
         if ismember('modularity', chars)
             [~, Qout] = gr_calculateQModularity(thresh_spctrm, 'weighted');
             Q(i,:) = nanmean(Qout);
-            updateWaitbar()
         end
         % if ismember('SW', chars)
         %     sz = size(spctrm{i});
@@ -70,21 +65,18 @@ if kepttrials
         %     end
         %     SW(i,:,:) = SWs;
         %     updateWaitbar()
-        % 
+        %
         % end
         if ismember('C', chars)
             C(i,:) = nanmedian(gr_calculateClusteringWs(thresh_spctrm, 'weighted'));
-            updateWaitbar()
         end
         if ismember('L', chars)
             L(i,:) = nanmedian(gr_calculatePathlengthWs(thresh_spctrm, 'weighted'));
-            updateWaitbar()
         end
 
 
     end
 else
-    updateWaitbar = waitbarParfor(length(spctrm)*length(chars), "Calculate characteristics...");
     strength = zeros(length(spctrm), length(T.freq{1}));
     SWP = zeros(length(spctrm), length(T.freq{1}));
     SW = zeros(length(spctrm), length(T.freq{1}));
@@ -92,15 +84,12 @@ else
         try
             if ismember('strength', chars)
                 strength(i,:) = nanmedian(bv_multisquareform(thresh_spctrm),2);
-                updateWaitbar()
             end
             if ismember('SWP', chars)
                 SWP(i,:) = gr_calculateSmallworldPropensityWs(thresh_spctrm);
-                updateWaitbar()
             end
             if ismember('SW', chars)
                 SW(i,:) = gr_calculateSmallWorldnessHumphries(thresh_spctrm, 1);
-                updateWaitbar()
             end
         catch
             error('%1.0f: %s', i, lasterr)

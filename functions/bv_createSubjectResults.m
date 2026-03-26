@@ -107,7 +107,6 @@ if nargin > 0
         end
     end    
     
-    updateWaitbar = waitbarParfor(height(subjectdatasummary), 'Adding to subjectsummary ...');
     for i = 1:height(subjectdatasummary)
         newSubjectresult = add2subjectresults(subjectdatasummary(i,:), subjectresultstmp, inputStr, keepstruct);
         if ~isempty(newSubjectresult)
@@ -126,7 +125,6 @@ if nargin > 0
             subjectresults(i,:) = T1;
             subjectresults(i,:).removed = 1;
         end
-        updateWaitbar();
     end
     fprintf('done! \n')
     subjectresults(cellfun(@isempty, subjectresults.pseudo),:) =[];

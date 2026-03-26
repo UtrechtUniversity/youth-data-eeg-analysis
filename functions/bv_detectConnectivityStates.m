@@ -18,7 +18,6 @@ As_out = nan(nchans, nchans, maxSzWs, nsubj);
 Ci = cell(1,nsubj);
 Q_out = zeros(1,nsubj);
 
-updateWaitbar = waitbarParfor(nsubj, 'calculating connectivity states ... ');  % waitbar for progress
 parfor i = 1:nsubj
     Ws = As{i};
     rmindx = all(isnan(bv_multisquareform(Ws)),2);
@@ -51,10 +50,8 @@ parfor i = 1:nsubj
     try
         As_out(:,:,:,i) = connStates;
     catch
-        updateWaitbar()
         error('%1.0f: %s', s, lasterr())
     end
-    updateWaitbar()
 
 end
 

@@ -17,7 +17,6 @@ clear OPTIONS; setOptions
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
 subjectFolderNames = subjectFolderNames(startSubject:endSubject);
 
-updateWaitbar = waitbarParfor(length(subjectFolderNames), "Preprocessing...");
 for iSubjects = 1:length(subjectFolderNames)
     try
         currSubject = subjectFolderNames{iSubjects};
@@ -92,7 +91,6 @@ for iSubjects = 1:length(subjectFolderNames)
         cfg.pathsFcn    = 'setPaths';
 
         [ connectivity ] = bv_calculatePLI(cfg, data);
-        updateWaitbar();
     catch
         warning([subjectFolderNames{iSubjects}, ': %s'], lasterr)
     end

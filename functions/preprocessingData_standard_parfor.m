@@ -15,7 +15,6 @@ bv_createSubjectFolders_YOUth(cfg);
 clear OPTIONS; setOptions
 
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
-updateWaitbar = waitbarParfor(length(startSubject:endSubject), "Preprocessing...");
 parfor iSubjects = startSubject:endSubject
     
         
@@ -26,7 +25,6 @@ parfor iSubjects = startSubject:endSubject
         cfg.overwrite   = 'no';
         
         data = bv_preprocResample(cfg);
-        updateWaitbar();
         
 end
 
@@ -34,7 +32,6 @@ end
 clear OPTIONS; setOptions
 
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
-updateWaitbar = waitbarParfor(length(startSubject:endSubject), "Artefact detection (preprocessed data)...");
 parfor iSubjects = startSubject:endSubject
     currSubject = subjectFolderNames{iSubjects};
     
@@ -43,7 +40,6 @@ parfor iSubjects = startSubject:endSubject
     cfg.quiet       = 'yes';
     
     artefactdef = bv_createArtefactStruct(cfg);
-    updateWaitbar(); 
 end
 
 
@@ -51,7 +47,6 @@ end
 clear OPTIONS; setOptions
 
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
-updateWaitbar = waitbarParfor(length(startSubject:endSubject), "Find channels to remove...");
 parfor iSubjects = startSubject:endSubject
     currSubject = subjectFolderNames{iSubjects};
     
@@ -60,7 +55,6 @@ parfor iSubjects = startSubject:endSubject
     cfg.quiet       = 'yes';
     
     data = bv_removeChannels(cfg);
-    updateWaitbar();
     
 end
 
@@ -68,7 +62,6 @@ end
 clear OPTIONS; setOptions
 
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
-updateWaitbar = waitbarParfor(length(startSubject:endSubject), "Preprocess (without removed channels)...");
 parfor iSubjects = startSubject:endSubject
     currSubject = subjectFolderNames{iSubjects};
     
@@ -77,7 +70,6 @@ parfor iSubjects = startSubject:endSubject
     cfg.quiet       = 'yes';
     
     data = bv_preprocResample(cfg);
-    updateWaitbar();
 
 end
 
@@ -85,7 +77,6 @@ end
 clear OPTIONS; setOptions
 
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
-updateWaitbar = waitbarParfor(length(startSubject:endSubject), "Artefact detection (clean preprocessed data)...");
 parfor iSubjects = startSubject:endSubject
     
     currSubject = subjectFolderNames{iSubjects};
@@ -95,7 +86,6 @@ parfor iSubjects = startSubject:endSubject
     cfg.quiet       = 'yes';
     
     artefactdef = bv_createArtefactStruct(cfg);
-    updateWaitbar();
     
 end
 
@@ -103,7 +93,6 @@ end
 clear OPTIONS; setOptions
 
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
-updateWaitbar = waitbarParfor(length(startSubject:endSubject), "Remove poor trials...");
 parfor iSubjects = startSubject:endSubject
 
     currSubject = subjectFolderNames{iSubjects};
@@ -113,14 +102,12 @@ parfor iSubjects = startSubject:endSubject
     cfg.quiet       = 'yes';
     
     data = bv_cleanData(cfg);
-    updateWaitbar();
 end
 
 %% APPEND DATA
 clear OPTIONS; setOptions
 
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
-updateWaitbar = waitbarParfor(length(startSubject:endSubject), "Append data...");
 parfor iSubjects = startSubject:endSubject
 
     cfg             = OPTIONS.APPENDED;
@@ -128,7 +115,6 @@ parfor iSubjects = startSubject:endSubject
     cfg.quiet       = 'yes';
     
     data = bv_appendfieldtripdata(cfg);
-    updateWaitbar();
     
 end
 
@@ -138,7 +124,6 @@ end
 clear OPTIONS; setOptions
 
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
-updateWaitbar = waitbarParfor(length(startSubject:endSubject), "Append data...");
 parfor iSubjects = startSubject:endSubject
 
     cfg             = OPTIONS.PLICONNECTIVITY;
@@ -146,6 +131,5 @@ parfor iSubjects = startSubject:endSubject
     cfg.quiet       = 'yes';
     
     [ connectivity ] = bv_calculatePLI(cfg);
-    updateWaitbar();
 end
 

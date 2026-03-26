@@ -15,7 +15,6 @@ n = size(Ws,3);
 Wrandomized = zeros([size(Ws,1) size(Ws,2) n m]);
 rng(100000)
 counter = 0;
-updateWaitbar = waitbarParfor(n, 'randomize matrices');
 parfor iS = 1:n
     currW = Ws(:,:,iS);
 
@@ -29,5 +28,4 @@ parfor iS = 1:n
         
         Wrandomized(:,:,iS,iM) = squareform(weights);
     end
-    updateWaitbar()
 end

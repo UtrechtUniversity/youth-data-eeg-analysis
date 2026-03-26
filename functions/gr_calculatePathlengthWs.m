@@ -23,7 +23,6 @@ n = size(As, 1);
 m = size(As, 3);
 
 L = zeros(1, size(As,3));
-updateWaitbar = waitbarParfor(m, 'calculating path lengths');
 for i = 1:m
     A = As(:,:,i);
     % find removed channels
@@ -52,7 +51,6 @@ for i = 1:m
     end
     [L(i), eff(i), ecc, rad(i), diam(i)] = charpath( D );
     ecc_out(i) = mean(ecc);
-    updateWaitbar();
 end
 
 if ndims > 3
