@@ -1,0 +1,9 @@
+/Analyses/
+/files/
+/PREPOC/
+/RAW/
+/templates/
+
+*.asv
+
+.DS_Store
