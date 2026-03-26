@@ -28,13 +28,16 @@ fprintf(fid,'if ~exist(PATHS.REMOVED, ''dir'')\n\tmkdir(PATHS.REMOVED)\nend\n');
 fprintf(fid,'if ~exist(PATHS.CONFIG, ''dir'')\n\tmkdir(PATHS.CONFIG)\nend\n');
 fprintf(fid,'if ~exist(PATHS.SUMMARY, ''dir'')\n\tmkdir(PATHS.SUMMARY)\nend\n');
 
-fprintf(fid, '\n%% add fieldtrip and the subfunctions to your matlab path\nPATHS.FTPATH = ''~/MatlabToolboxes/fieldtrip'';');
+fprintf(fid, '\n%% add fieldtrip and the subfunctions to your matlab path\nPATHS.FTPATH = ''~/MatlabToolboxes/fieldtrip'';\n');
 fprintf(fid, 'addpath(PATHS.FTPATH)\n');
 fprintf(fid, 'addpath(PATHS.SUBFUNCTIONS)\n');
 fprintf(fid, 'addpath(pwd)\n');
 fprintf(fid, 'addpath(PATHS.FTPATH)\n');
 fprintf(fid, 'addpath(PATHS.FILES)\n');
 fprintf(fid, 'ft_defaults\n');
+
+fprintf(fid, '\nPATHS.PIPELINE = ''%s''; %% path to pipeline functions\n', [path2home filesep 'functions' filesep]);
+fprintf(fid, 'addpath(PATHS.PIPELINE)\n');
 
 if exist([path2root filesep 'setPaths.m'], 'file') == 2
     filecreated = true(1);

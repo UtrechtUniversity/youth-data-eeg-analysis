@@ -7,3 +7,6 @@
 *.asv
 
 .DS_Store
+
+/functions/waitbarCLI.m
+
