@@ -50,8 +50,10 @@ if nargin < 2
     overwrite = 0;
 end
 
-if ~isempty(str)
+if ~isempty(str) && str ~= ""
     str = ['_' char(str)];
+elseif isempty(str) || str == ""
+    str = '';
 end
 
 PATHS.HOME = pwd;
@@ -115,18 +117,7 @@ if ~overwrite && exist([PATHS.CURRANALYSIS filesep 'setOptions.m'], 'file')
     setOptionsExist = true(1);
     fprintf('setOptions.m already exists, not overwriting \n')
 else
-    location = questdlg('Which EEG data are you using? (for default options)', 'Location', 'YOUth', 'NEO', 'None', 'None');
-
-    switch location
-        case 'YOUth'
-            setOptionsExist = copyfile(which('setOptions_YOUth'), [PATHS.CURRANALYSIS filesep 'setOptions.m']);
-        case 'NEO'
-            setOptionsExist = copyfile(which('setOptions_NEO'), [PATHS.CURRANALYSIS filesep 'setOptions.m']);
-        case 'None'
-            setOptionsExist = copyfile(which('setOptions_empty'), [PATHS.CURRANALYSIS filesep 'setOptions.m']);
-        otherwise
-            error('Unknkown option')
-    end
+    setOptionsExist = copyfile(which('setOptions_covid'), [PATHS.CURRANALYSIS filesep 'setOptions.m']);
 
     if setOptionsExist
         fprintf('setOptions.m created \n')
@@ -142,14 +133,20 @@ if ~overwrite && exist([PATHS.CURRANALYSIS filesep 'preprocessingData.m'], 'file
     fprintf('preprocessingData.m already exists, not overwriting \n')
 else
     config = '';
-    parprocess = questdlg('Will you use parallel processing?');
-    saveIntermediate = questdlg('Do you need intermediate steps to be saved? (Not recommended if you have limited harddrive space)');
+    parprocess = input("\nWill you use parallel processing? Y/n [n]: ", "s");
+    if isempty(parprocess)
+        parprocess = 'n';
+    end
+    saveIntermediate = input("\nDo you need intermediate steps to be saved? Y/n [y]: ", "s");
+    if isempty(saveIntermediate)
+        saveIntermediate = 'y';
+    end
 
-    if strcmpi(parprocess, 'yes')
+    if strcmpi(parprocess, 'y')
         config = [config, '-parprocess'];
     end    
     
-    if strcmpi(saveIntermediate, 'yes')
+    if strcmpi(saveIntermediate, 'y')
         config = [config, '-saveintermediate'];
     end
 
