@@ -285,7 +285,32 @@ cfg.headerfile = hdrfile;
 cfg.continuous = 'yes';
 cfg.chanindx = chanindx;
 
-evalc('data = ft_preprocessing(cfg);');
+% Preprocess data or remove subject if not possible
+try
+    evalc('data = ft_preprocessing(cfg);');
+catch ME
+    subjectdata.nTrialsPreproc = 0;
+
+    if ~quiet
+        bv_saveData(subjectdata)
+    else
+        evalc('bv_saveData(subjectdata);');
+    end
+    cfg = [];
+    cfg.optionsFcn = 'setOptions';
+    cfg.pathsFcn = 'setPaths';
+
+    if contains(ME.message, 'One or more output arguments not assigned during call to "read_24bit".')
+        if ~quiet; fprintf('\n \t \t bdf file truncated, removing subject and continuing ... \n'); end
+        removingSubjects(cfg, currSubject, 'preprocessing - truncated bdf file (read_24bit error)')
+    else
+        if ~quiet; fprintf('\n \t \t error when reading file, removing subject and continuing ... \n'); end
+        removingSubjects(cfg, currSubject, ['preprocessing - ' ME.message])
+    end
+
+    data = [];
+    return
+end
 
 if ~quiet; fprintf('done! \n'); end
 
