@@ -15,9 +15,10 @@ function [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(sta
 %   subjectFolderNames  { cell } with strings with all folder names
 
 eval('setPaths')
-eval('setOptions')
 
-subjectFolders = dir([PATHS.SUBJECTS filesep '*' OPTIONS.sDirString '*']);
+subjectFolders = dir(PATHS.SUBJECTS);
+subjectFolders = subjectFolders([subjectFolders.isdir] & ~ismember({subjectFolders.name}, {'.', '..'}));
+subjectFolders = subjectFolders(~strcmp(fullfile(PATHS.SUBJECTS, {subjectFolders.name}), PATHS.REMOVED));
 subjectFolderNames = {subjectFolders.name};
 
 if ischar(startSubject)

@@ -10,7 +10,9 @@ analysisTree        = ft_getopt(cfg, 'analysisFolderName');
 setStandards;
 currDir = pwd;
 
-subjectFolders = dir([PATHS.SUBJECTS filesep sDirString '*']);  % gather subject folders
+subjectFolders = dir(PATHS.SUBJECTS);  % gather subject folders
+subjectFolders = subjectFolders([subjectFolders.isdir] & ~ismember({subjectFolders.name}, {'.', '..'}));
+subjectFolders = subjectFolders(~strcmp(fullfile(PATHS.SUBJECTS, {subjectFolders.name}), PATHS.REMOVED));
 subjectFolderNames = {subjectFolders.name}; % create a cell of subject folder names 
 
 subjectIndx = [];

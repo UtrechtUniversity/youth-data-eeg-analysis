@@ -1,8 +1,9 @@
 function bv_createROutput(filestr)
 
 setPaths
-setOptions
-subjectDirs = dir([PATHS.SUBJECTS filesep OPTIONS.sDirString '*']);
+subjectDirs = dir(PATHS.SUBJECTS);
+subjectDirs = subjectDirs([subjectDirs.isdir] & ~ismember({subjectDirs.name}, {'.', '..'}));
+subjectDirs = subjectDirs(~strcmp(fullfile(PATHS.SUBJECTS, {subjectDirs.name}), PATHS.REMOVED));
 
 for i = 1:length(subjectDirs)
     currSubject = subjectDirs(i).name;

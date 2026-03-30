@@ -8,21 +8,24 @@ OPTIONS.saveData                = 'yes'; % 'string': ('yes' or 'no') to determin
 OPTIONS.triallength             = 3; % [ number ]: triallength used for analysis 
 OPTIONS.artifacttrllength       = 1;
 OPTIONS.pathsScript             = 'setPaths'; % 'string': pathScript name ('setPaths') 
-OPTIONS.sDirString              = 'B'; % 'string': unique search string for raw eeg files which will find all files when used as dir ( ['*' sDirString '*'] ) 
-OPTIONS.dataType                = 'bdf'; % 'string': ('bdf' or 'eeg') to determine which datatype will be used for the analyses 
 OPTIONS.trigger.value           = []; % [ double ]: trigger value(s) 
 OPTIONS.trigger.label           = {}; % { cell }: trigger label(s) (e.g. 'Social' vs 'NonSocial'). Must be equal in length with trigger value. 
 OPTIONS.maxbadchans             = 25;
 
 %% Create subject folders
 OPTIONS.CREATEFOLDERS.pathsFcn      = OPTIONS.pathsScript;
-OPTIONS.CREATEFOLDERS.inputName     = []; % only required when datatype = 'mat'
+OPTIONS.CREATEFOLDERS.prevAnalysis  = []; % only required when datatype = 'mat'
 OPTIONS.CREATEFOLDERS.rawdelim      = '_'; % delimiter found in raw eeg files
-OPTIONS.CREATEFOLDERS.rawlabel      = {'pseudo', 'wave'}; % label the seperate elements of eeg file name (with delimiters in between)
 OPTIONS.CREATEFOLDERS.sfoldername   = {'pseudo', 'wave'}; % how your subject folders should be labeled
 OPTIONS.CREATEFOLDERS.overwrite     = 'yes';
-OPTIONS.CREATEFOLDERS.sDirString    = OPTIONS.sDirString; % match string to find bdf files 
 OPTIONS.CREATEFOLDERS.dataType      = 'bdf'; % data type (can be 'bdf, 'eeg', 'mat')
+
+OPTIONS.CREATEFOLDERS.folderlabel   = {'wave', 'experiment', 'pseudo'};
+OPTIONS.CREATEFOLDERS.rawlabel      = {'pseudo', 'wave'}; % label the seperate elements of eeg file name (with delimiters in between)
+OPTIONS.CREATEFOLDERS.wavePattern   = '';
+OPTIONS.CREATEFOLDERS.expPattern    = 'facehouse';
+OPTIONS.CREATEFOLDERS.pseudoPattern = 'B';
+OPTIONS.CREATEFOLDERS.filePattern   = '';
 
 %% Preprocessing options
 % options only used for the preprocessing of the data 

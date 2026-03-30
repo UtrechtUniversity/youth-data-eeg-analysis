@@ -1,10 +1,11 @@
 function bv_mergeSubjects(preprocStr)
 
 eval('setPaths')
-eval('setOptions')
 
 % find split files
-subjectdirs = dir([PATHS.SUBJECTS filesep '*' OPTIONS.sDirString '*']);
+subjectdirs = dir(PATHS.SUBJECTS);
+subjectdirs = subjectdirs([subjectdirs.isdir] & ~ismember({subjectdirs.name}, {'.', '..'}));
+subjectdirs = subjectdirs(~strcmp(fullfile(PATHS.SUBJECTS, {subjectdirs.name}), PATHS.REMOVED));
 subjectnames = {subjectdirs.name};
 pseudocodes = cellfun(@(v) v(1:6), subjectnames, 'Un', 0);
 a = unique(pseudocodes,'stable');

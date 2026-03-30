@@ -11,7 +11,9 @@ noTrials        = ft_getopt(cfg, 'noTrials');
 
 eval(optionsFcn)
 
-subjectFolders = dir([PATHS.SUBJECTS filesep '*' sDirString '*']);
+subjectFolders = dir(PATHS.SUBJECTS);
+subjectFolders = subjectFolders([subjectFolders.isdir] & ~ismember({subjectFolders.name}, {'.', '..'}));
+subjectFolders = subjectFolders(~strcmp(fullfile(PATHS.SUBJECTS, {subjectFolders.name}), PATHS.REMOVED));
 subjectNames = {subjectFolders.name};
 
 outputFile = ['corrMatrices_' corrMethod '_' outputStr '.mat'];

@@ -1,9 +1,10 @@
 function bv_updateSubjectFile
 
 eval('setPaths')
-eval('setOptions')
 
-sDirs = dir([PATHS.SUBJECTS filesep '*' OPTIONS.sDirString '*']);
+sDirs = dir(PATHS.SUBJECTS);
+sDirs = sDirs([sDirs.isdir] & ~ismember({sDirs.name}, {'.', '..'}));
+sDirs = sDirs(~strcmp(fullfile(PATHS.SUBJECTS, {sDirs.name}), PATHS.REMOVED));
 sNames = {sDirs.name};
 
 for iSubjects = 1:length(sDirs)

@@ -1,9 +1,10 @@
 function bv_appendPLI(inputStr)
 
 eval('setPaths')
-eval('setOptions')
 
-subjectdirs = dir([PATHS.SUBJECTS filesep OPTIONS.sDirString '*']);
+subjectdirs = dir(PATHS.SUBJECTS);
+subjectdirs = subjectdirs([subjectdirs.isdir] & ~ismember({subjectdirs.name}, {'.', '..'}));
+subjectdirs = subjectdirs(~strcmp(fullfile(PATHS.SUBJECTS, {subjectdirs.name}), PATHS.REMOVED));
 subjectnames = {subjectdirs.name};
 pseudocodes = cellfun(@(v) v(1:6), {subjectdirs.name}, 'Un', 0);
 uniquesubjectnames = unique(pseudocodes, 'stable');

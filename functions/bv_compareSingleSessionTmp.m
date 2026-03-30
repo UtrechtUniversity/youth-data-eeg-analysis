@@ -5,9 +5,10 @@ saveResults = 'yes';
 saveFigures = 'no';
 
 eval('setPaths')
-eval('setOptions')
 
-subjectFolders = dir([PATHS.SUBJECTS filesep '*' OPTIONS.sDirString '*']);
+subjectFolders = dir(PATHS.SUBJECTS);
+subjectFolders = subjectFolders([subjectFolders.isdir] & ~ismember({subjectFolders.name}, {'.', '..'}));
+subjectFolders = subjectFolders(~strcmp(fullfile(PATHS.SUBJECTS, {subjectFolders.name}), PATHS.REMOVED));
 subjectFolderNames = {subjectFolders.name};
 
 if ischar(startSubject)
@@ -22,7 +23,6 @@ if ischar(endSubject)
 end
 
 %% SPLIT CLEANED DATA
-eval('setOptions')
 clear subjects R Ws
 for iSubjects = startSubject:endSubject
     currSubject = subjectFolderNames{iSubjects};

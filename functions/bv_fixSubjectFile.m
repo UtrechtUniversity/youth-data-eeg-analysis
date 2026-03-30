@@ -1,9 +1,10 @@
 function bv_fixSubjectFile
 
-eval('setOptions')
 eval('setPaths')
 
-sDirs = dir([PATHS.SUBJECTS filesep '*' OPTIONS.sDirString '*']);
+sDirs = dir(PATHS.SUBJECTS);
+sDirs = sDirs([sDirs.isdir] & ~ismember({sDirs.name}, {'.', '..'}));
+sDirs = sDirs(~strcmp(fullfile(PATHS.SUBJECTS, {sDirs.name}), PATHS.REMOVED));
 sNames = {sDirs.name};
 
 for iS = 1:length(sNames)
@@ -13,7 +14,7 @@ for iS = 1:length(sNames)
     fpnames = fieldnames(subjectdata.PATHS);
     fprintf(['\t following paths found in subject-file: ' repmat('%s ', 1, length(fpnames)) ' \n'], fpnames{:});
     
-    datafiles = dir([subjectdata.PATHS.SUBJECTDIR filesep OPTIONS.sDirString '*.mat']);
+    datafiles = dir([subjectdata.PATHS.SUBJECTDIR filesep '*.mat']);
     datanames = {datafiles.name};
     
     split1 = cellfun(@(x) strsplit(x, '.'), datanames, 'UniformOutput', false);

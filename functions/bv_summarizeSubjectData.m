@@ -1,10 +1,10 @@
 function summarizedSubjectdata = bv_summarizeSubjectData
 
 eval('setPaths')
-eval('setOptions')
 
-subjectFolders = dir([PATHS.SUBJECTS filesep '**' filesep OPTIONS.sDirString '*']);
-subjectFolders = subjectFolders([subjectFolders.isdir])
+subjectFolders = dir(PATHS.SUBJECTS);
+subjectFolders = subjectFolders([subjectFolders.isdir] & ~ismember({subjectFolders.name}, {'.', '..'}));
+subjectFolders = subjectFolders(~strcmp(fullfile(PATHS.SUBJECTS, {subjectFolders.name}), PATHS.REMOVED));
 subjectFoldernames = {subjectFolders.name};
 subjectPaths = {subjectFolders.folder};
 [subjectFoldernames,sortIndx] = sort(subjectFoldernames);

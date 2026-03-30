@@ -10,10 +10,11 @@ else
     israw = 0;
 end
 
-eval('setOptions')
 eval('setPaths')
 
-subjectFolders = dir([PATHS.SUBJECTS filesep '*' OPTIONS.sDirString '*']);
+subjectFolders = dir(PATHS.SUBJECTS);
+subjectFolders = subjectFolders([subjectFolders.isdir] & ~ismember({subjectFolders.name}, {'.', '..'}));
+subjectFolders = subjectFolders(~strcmp(fullfile(PATHS.SUBJECTS, {subjectFolders.name}), PATHS.REMOVED));
 subjectFoldersName = {subjectFolders.name};
 subject.name = subjectFoldersName{ismember(subjectFoldersName, str)};
 

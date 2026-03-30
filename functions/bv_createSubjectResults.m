@@ -1,12 +1,14 @@
 function subjectresults = bv_createSubjectResults(inputStr, keepstruct)
 
 eval('setPaths')
-eval('setOptions')
 
 fprintf('Creating subject results \n')
 fprintf('\t Creating subjectsummary ... ')
-subjectdirflags = dir([PATHS.SUBJECTS filesep '*' OPTIONS.sDirString '*']);
-subjectrmflags = dir([PATHS.REMOVED filesep '*' OPTIONS.sDirString '*']);
+subjectdirflags = dir(PATHS.SUBJECTS);
+subjectdirflags = subjectdirflags([subjectdirflags.isdir] & ~ismember({subjectdirflags.name}, {'.', '..'}));
+subjectdirflags = subjectdirflags(~strcmp(fullfile(PATHS.SUBJECTS, {subjectdirflags.name}), PATHS.REMOVED));
+subjectrmflags = dir(PATHS.REMOVED);
+subjectrmflags = subjectrmflags([subjectrmflags.isdir] & ~ismember({subjectrmflags.name}, {'.', '..'}));
 
 subjectdirflags = [subjectdirflags; subjectrmflags];
 

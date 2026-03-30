@@ -7,10 +7,11 @@ pathsFcn    = ft_getopt(cfg, 'pathsFcn', 'setPaths');
 saveFigures = ft_getopt(cfg, 'saveFigures', 'no');
 channel    = ft_getopt(cfg, 'channel', 'all');
 
-eval(optionsFcn)
 eval(pathsFcn)
 
-folders = dir([PATHS.SUBJECTS filesep '*' OPTIONS.sDirString '*']);
+folders = dir(PATHS.SUBJECTS);
+folders = folders([folders.isdir] & ~ismember({folders.name}, {'.', '..'}));
+folders = folders(~strcmp(fullfile(PATHS.SUBJECTS, {folders.name}), PATHS.REMOVED));
 nFolders = {folders.name};
 subjectNames = cellfun(@(v) v(1:5), nFolders, 'Un', 0);
 subjectNames = unique(subjectNames);

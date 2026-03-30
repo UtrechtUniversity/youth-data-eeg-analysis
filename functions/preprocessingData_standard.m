@@ -4,7 +4,7 @@
 %% setup subject folders
 clear OPTIONS; setOptions
 cfg = OPTIONS.CREATEFOLDERS;
-bv_createSubjectFolders_YOUth(cfg);
+bv_createSubjectFolders_NewStruct(cfg);
 
 %% PREPROCESSING AND RESAMPLING
 clear OPTIONS; setOptions

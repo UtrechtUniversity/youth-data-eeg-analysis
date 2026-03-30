@@ -4,10 +4,11 @@ inputStr 	= ft_getopt(cfg, 'inputStr');
 optionsFcn  = ft_getopt(cfg, 'optionsFcn','setOptions');
 pathsFcn    = ft_getopt(cfg, 'pathsFcn','setPaths');
 
-eval(optionsFcn)
 eval(pathsFcn)
 
-subjectdirs = dir([PATHS.SUBJECTS filesep '*' OPTIONS.sDirString '*']);
+subjectdirs = dir(PATHS.SUBJECTS);
+subjectdirs = subjectdirs([subjectdirs.isdir] & ~ismember({subjectdirs.name}, {'.', '..'}));
+subjectdirs = subjectdirs(~strcmp(fullfile(PATHS.SUBJECTS, {subjectdirs.name}), PATHS.REMOVED));
 subjectdirnames = {subjectdirs.name};
 
 clear output

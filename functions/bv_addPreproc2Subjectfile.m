@@ -1,9 +1,10 @@
 function bv_addPreproc2Subjectfile
 
-eval('setOptions')
 eval('setPaths')
 
-sDirs = dir([PATHS.SUBJECTS filesep '*' OPTIONS.sDirString '*']);
+sDirs = dir(PATHS.SUBJECTS);
+sDirs = sDirs([sDirs.isdir] & ~ismember({sDirs.name}, {'.', '..'}));
+sDirs = sDirs(~strcmp(fullfile(PATHS.SUBJECTS, {sDirs.name}), PATHS.REMOVED));
 sNames = {sDirs.name};
 load([PATHS.SUMMARY filesep 'SubjectSummary'], 'subjectdatasummary')
 

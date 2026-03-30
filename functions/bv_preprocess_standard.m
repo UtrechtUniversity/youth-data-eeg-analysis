@@ -19,7 +19,9 @@ trialfun                = ft_getopt(cfg, 'trialfun');
 
 eval(optionsFcn)
 
-subjectFiles = dir([PATHS.SUBJECTS filesep '*' sDirString '*']);
+subjectFiles = dir(PATHS.SUBJECTS);
+subjectFiles = subjectFiles([subjectFiles.isdir] & ~ismember({subjectFiles.name}, {'.', '..'}));
+subjectFiles = subjectFiles(~strcmp(fullfile(PATHS.SUBJECTS, {subjectFiles.name}), PATHS.REMOVED));
 subjectNames = {subjectFiles.name};
 
 rmChannels = {};

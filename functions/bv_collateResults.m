@@ -8,9 +8,10 @@ if nargin < 2
 end
 
 eval('setPaths')
-eval('setOptions')
 
-subjectdirflags = dir([PATHS.SUBJECTS filesep '*' OPTIONS.sDirString '*']);
+subjectdirflags = dir(PATHS.SUBJECTS);
+subjectdirflags = subjectdirflags([subjectdirflags.isdir] & ~ismember({subjectdirflags.name}, {'.', '..'}));
+subjectdirflags = subjectdirflags(~strcmp(fullfile(PATHS.SUBJECTS, {subjectdirflags.name}), PATHS.REMOVED));
 
 for i = 1:length(subjectdirflags)
     lng = printPercDone(length(subjectdirflags), i);

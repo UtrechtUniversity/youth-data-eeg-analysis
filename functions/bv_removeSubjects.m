@@ -16,14 +16,15 @@ if strcmp(cfg.method, 'checkchannels') && isempty(cfg.minchans)
     error('checking channels while no minimum channels is given')
 end
 
-eval(cfg.optionsFcn)
 eval(cfg.pathsFcn)
 
 if ~isfield(PATHS, 'REMOVED')
     error('please add REMOVED to PATHS structure, created in your pathsFcn')
 end
 
-subjectDirs = dir([PATHS.SUBJECTS filesep '*' OPTIONS.sDirString '*']);
+subjectDirs = dir(PATHS.SUBJECTS);
+subjectDirs = subjectDirs([subjectDirs.isdir] & ~ismember({subjectDirs.name}, {'.', '..'}));
+subjectDirs = subjectDirs(~strcmp(fullfile(PATHS.SUBJECTS, {subjectDirs.name}), PATHS.REMOVED));
 subjectNames = {subjectDirs.name};
 
 for iSubj = 1:length(subjectNames)
