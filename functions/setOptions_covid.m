@@ -16,7 +16,7 @@ OPTIONS.maxbadchans             = 25;
 
 %% Create subject folders
 OPTIONS.CREATEFOLDERS.pathsFcn      = OPTIONS.pathsScript;
-OPTIONS.CREATEFOLDERS.inputName      = []; % only required when datatype = 'mat'
+OPTIONS.CREATEFOLDERS.inputName     = []; % only required when datatype = 'mat'
 OPTIONS.CREATEFOLDERS.rawdelim      = '_'; % delimiter found in raw eeg files
 OPTIONS.CREATEFOLDERS.rawlabel      = {'pseudo', 'wave'}; % label the seperate elements of eeg file name (with delimiters in between)
 OPTIONS.CREATEFOLDERS.sfoldername   = {'pseudo', 'wave'}; % how your subject folders should be labeled
@@ -44,7 +44,7 @@ OPTIONS.PREPROC.overwrite       = 'yes';
 %% Calculate artifact values after preprocessing
 OPTIONS.ARTFCTPREPROC.inputName       = 'PREPROC';
 OPTIONS.ARTFCTPREPROC.outputName      = 'ARTFCTBEFORE';
-OPTIONS.ARTFCTPREPROC.saveData        = 'yes';
+OPTIONS.ARTFCTPREPROC.saveData        = OPTIONS.saveData;
 OPTIONS.ARTFCTPREPROC.pathsFcn        = 'setPaths';
 OPTIONS.ARTFCTPREPROC.cutintrials     = 'yes';
 OPTIONS.ARTFCTPREPROC.triallength     = OPTIONS.artifacttrllength;
@@ -66,7 +66,7 @@ OPTIONS.RMCHANNELS.pathsFcn        = OPTIONS.pathsScript;
 OPTIONS.RMCHANNELS.inputName       = 'PREPROC';
 OPTIONS.RMCHANNELS.outputName      = 'PREPROCRMCHANNELS';
 OPTIONS.RMCHANNELS.artefactData    = 'ARTFCTBEFORE';
-OPTIONS.RMCHANNELS.saveData        = 'no';
+OPTIONS.RMCHANNELS.saveData        = OPTIONS.saveData;
 OPTIONS.RMCHANNELS.maxbadchans     = OPTIONS.maxbadchans;
 OPTIONS.RMCHANNELS.maxpercbad      = 90;
 OPTIONS.RMCHANNELS.expectedtrials  = 360./OPTIONS.artifacttrllength;
@@ -91,9 +91,9 @@ OPTIONS.REREF.waveletThresh   = 'no';
 OPTIONS.REREF.interpolate     = 'yes';  
 
 %% Calculate artifact values after preprocessing
-OPTIONS.ARTFCTRMCHANNELS.inputName        = 'PREPROCRMCHANNELS';
-OPTIONS.ARTFCTRMCHANNELS.outputName       = 'ARTFCTRMCHANS';
-OPTIONS.ARTFCTRMCHANNELS.saveData        = 'yes';
+OPTIONS.ARTFCTRMCHANNELS.inputName       = 'PREPROCRMCHANNELS';
+OPTIONS.ARTFCTRMCHANNELS.outputName      = 'ARTFCTRMCHANS';
+OPTIONS.ARTFCTRMCHANNELS.saveData        = OPTIONS.saveData;
 OPTIONS.ARTFCTRMCHANNELS.pathsFcn        = 'setPaths';
 OPTIONS.ARTFCTRMCHANNELS.cutintrials     = 'yes';
 OPTIONS.ARTFCTRMCHANNELS.triallength     = OPTIONS.artifacttrllength;
@@ -112,10 +112,10 @@ lims.variance = 2000;
 
 OPTIONS.CLEANED.lims            = lims;
 OPTIONS.CLEANED.pathsFcn        = OPTIONS.pathsScript; 
-OPTIONS.CLEANED.inputName        = 'PREPROCRMCHANNELS';
-OPTIONS.CLEANED.outputName       = 'CLEANED';
+OPTIONS.CLEANED.inputName       = 'PREPROCRMCHANNELS';
+OPTIONS.CLEANED.outputName      = 'CLEANED';
 OPTIONS.CLEANED.artefactData    = 'ARTFCTRMCHANS';
-OPTIONS.CLEANED.saveData        = 'yes';
+OPTIONS.CLEANED.saveData        = OPTIONS.saveData;
 OPTIONS.CLEANED.saveCleanData   = 'yes';
 OPTIONS.CLEANED.expectedtrials  = 360./OPTIONS.artifacttrllength;
 OPTIONS.CLEANED.repairchans     = 'no';
@@ -124,38 +124,38 @@ OPTIONS.CLEANED.dataLossLabel   = 'dataLossAfter';
 OPTIONS.CLEANED.cutIntoTrials   = 'yes';
 
 %% Append
-OPTIONS.APPENDED.pathsFcn        = OPTIONS.pathsScript; 
-OPTIONS.APPENDED.inputName        = 'CLEANED';
-OPTIONS.APPENDED.outputName       = 'APPEND';
-OPTIONS.APPENDED.triallength     = OPTIONS.artifacttrllength;
-OPTIONS.APPENDED.saveData        = 'yes';
+OPTIONS.APPENDED.pathsFcn     = OPTIONS.pathsScript; 
+OPTIONS.APPENDED.inputName    = 'CLEANED';
+OPTIONS.APPENDED.outputName   = 'APPEND';
+OPTIONS.APPENDED.triallength  = OPTIONS.artifacttrllength;
+OPTIONS.APPENDED.saveData     = OPTIONS.saveData;
 
 %% WPLI connetivity calculation options 
-OPTIONS.WPLICONNECTIVITY.inputName    = 'APPEND';% 'string': outputName of previous analysis step, to be used as input for this step 
+OPTIONS.WPLICONNECTIVITY.inputName   = 'APPEND';% 'string': outputName of previous analysis step, to be used as input for this step 
 OPTIONS.WPLICONNECTIVITY.method      = 'wpli'; % method used for calculating connectivity 
 OPTIONS.WPLICONNECTIVITY.freqOutput  = 'powandcsd'; % frequency output used 
 OPTIONS.WPLICONNECTIVITY.triallength = OPTIONS.triallength; %
-OPTIONS.WPLICONNECTIVITY.outputName   = ['WPLI' num2str(OPTIONS.WPLICONNECTIVITY.triallength) '_2048Hz']; %'string': addition to filename when saving, so that the output filename becomes [currSubject outputName .mat] 
+OPTIONS.WPLICONNECTIVITY.outputName  = ['WPLI' num2str(OPTIONS.WPLICONNECTIVITY.triallength) '_2048Hz']; %'string': addition to filename when saving, so that the output filename becomes [currSubject outputName .mat] 
 OPTIONS.WPLICONNECTIVITY.saveData    = OPTIONS.saveData; 
 OPTIONS.WPLICONNECTIVITY.optionsFcn  = OPTIONS.pathsScript;
 OPTIONS.WPLICONNECTIVITY.keeptrials  = 'no';
 
 %% COH connetivity calculation options 
-OPTIONS.COHCONNECTIVITY.inputName    = 'APPEND';% 'string': outputName of previous analysis step, to be used as input for this step 
+OPTIONS.COHCONNECTIVITY.inputName   = 'APPEND';% 'string': outputName of previous analysis step, to be used as input for this step 
 OPTIONS.COHCONNECTIVITY.method      = 'coh'; % method used for calculating connectivity 
 OPTIONS.COHCONNECTIVITY.freqOutput  = 'powandcsd'; % frequency output used 
 OPTIONS.COHCONNECTIVITY.triallength = OPTIONS.triallength; %
-OPTIONS.COHCONNECTIVITY.outputName   = ['COH' num2str(OPTIONS.WPLICONNECTIVITY.triallength)]; %'string': addition to filename when saving, so that the output filename becomes [currSubject outputName .mat] 
+OPTIONS.COHCONNECTIVITY.outputName  = ['COH' num2str(OPTIONS.WPLICONNECTIVITY.triallength)]; %'string': addition to filename when saving, so that the output filename becomes [currSubject outputName .mat] 
 OPTIONS.COHCONNECTIVITY.saveData    = OPTIONS.saveData; 
 OPTIONS.COHCONNECTIVITY.optionsFcn  = OPTIONS.pathsScript;
 OPTIONS.COHCONNECTIVITY.keeptrials  = 'no';
 
 %% PLI connetivity calculation options 
-OPTIONS.PLICONNECTIVITY.inputName    = 'APPEND';% 'string': outputName of previous analysis step, to be used as input for this step 
+OPTIONS.PLICONNECTIVITY.inputName   = 'APPEND';% 'string': outputName of previous analysis step, to be used as input for this step 
 OPTIONS.PLICONNECTIVITY.method      = 'pli'; % method used for calculating connectivity 
 OPTIONS.PLICONNECTIVITY.freqOutput  = 'powandcsd'; % frequency output used 
 OPTIONS.PLICONNECTIVITY.triallength = OPTIONS.triallength; % frequency output used 
-OPTIONS.PLICONNECTIVITY.outputName   = ['PLI' num2str(OPTIONS.triallength)]; %'string': addition to filename when saving, so that the output filename becomes [currSubject outputName .mat] 
+OPTIONS.PLICONNECTIVITY.outputName  = ['PLI' num2str(OPTIONS.triallength)]; %'string': addition to filename when saving, so that the output filename becomes [currSubject outputName .mat] 
 OPTIONS.PLICONNECTIVITY.saveData    = OPTIONS.saveData; 
 OPTIONS.PLICONNECTIVITY.optionsFcn  = OPTIONS.pathsScript;
 OPTIONS.PLICONNECTIVITY.keeptrials  = 'yes';

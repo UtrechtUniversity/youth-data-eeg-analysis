@@ -32,6 +32,7 @@ if makefolders == 1
 end
 
 %% Provide correct paths
+% change FieldTrip folder, the rest should be okay
 edit("setPaths.m")
 
 %% Set paths

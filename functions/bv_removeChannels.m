@@ -207,14 +207,17 @@ if not(isempty(subjectdata.channels2remove))
 end
 
 if strcmpi(saveData, 'yes')
-
     if ~quiet
         if strcmpi(repairchans, 'yes')
             bv_saveData(subjectdata, data, outputName); % save both data and subjectdata to the drive
+        else
+            bv_saveData(subjectdata);
         end
     else
         if strcmpi(repairchans, 'yes')
             evalc('bv_saveData(subjectdata, data, outputName);'); % save both data and subjectdata to the drive
+        else
+            evalc('bv_saveData(subjectdata);');
         end
     end
 else
