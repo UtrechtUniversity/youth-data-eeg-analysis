@@ -10,7 +10,7 @@ OPTIONS.artifacttrllength       = 1;
 OPTIONS.pathsScript             = 'setPaths'; % 'string': pathScript name ('setPaths') 
 OPTIONS.trigger.value           = []; % [ double ]: trigger value(s) 
 OPTIONS.trigger.label           = {}; % { cell }: trigger label(s) (e.g. 'Social' vs 'NonSocial'). Must be equal in length with trigger value. 
-OPTIONS.maxbadchans             = 25;
+OPTIONS.maxbadchans             = 3;
 
 %% Create subject folders
 OPTIONS.CREATEFOLDERS.pathsFcn      = OPTIONS.pathsScript;
@@ -71,7 +71,7 @@ OPTIONS.RMCHANNELS.outputName      = 'PREPROCRMCHANNELS';
 OPTIONS.RMCHANNELS.artefactData    = 'ARTFCTBEFORE';
 OPTIONS.RMCHANNELS.saveData        = OPTIONS.saveData;
 OPTIONS.RMCHANNELS.maxbadchans     = OPTIONS.maxbadchans;
-OPTIONS.RMCHANNELS.maxpercbad      = 90;
+OPTIONS.RMCHANNELS.maxpercbad      = 40;
 OPTIONS.RMCHANNELS.expectedtrials  = 360./OPTIONS.artifacttrllength;
 OPTIONS.RMCHANNELS.repairchans     = 'no';
 
