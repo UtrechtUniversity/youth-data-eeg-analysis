@@ -114,20 +114,16 @@ if ~overwrite && exist([PATHS.CURRANALYSIS filesep 'preprocessingData.m'], 'file
     fprintf('preprocessingData.m already exists, not overwriting \n')
 else
     config = '';
-    parprocess = input("\nWill you use parallel processing? Y/n [n]: ", "s");
-    if isempty(parprocess)
-        parprocess = 'n';
-    end
-    saveIntermediate = input("\nDo you need intermediate steps to be saved? Y/n [y]: ", "s");
-    if isempty(saveIntermediate)
-        saveIntermediate = 'y';
-    end
+    parprocess = questdlg('Will you use parallel processing?', ...
+        'Parallel processing', 'Yes', 'No', 'No');
+    saveIntermediate = questdlg('Would you like intermediate steps to be saved?', ...
+        'Save intermediate steps', 'Yes', 'No', 'Yes');
 
-    if strcmpi(parprocess, 'y')
+    if strcmpi(parprocess, 'Yes')
         config = [config, '-parprocess'];
-    end    
+    end
     
-    if strcmpi(saveIntermediate, 'y')
+    if strcmpi(saveIntermediate, 'Yes')
         config = [config, '-saveintermediate'];
     end
 

@@ -1,25 +1,24 @@
 %% EEG COVID Pipeline
 % This pipeline is meant to preprocess and analyse data from the YOUth
-% Cohort study. It is specifically suited to reproduce an ERP analysis
-% originally conducted to see the influence of covid measures on emotional
-% face processing in infants.
+% Cohort study. It is specifically suited to reproduce a network 
+% connectivity analysis.
 
 %% Clear workspace before start
 
 restoredefaultpath
-clear all
-close all
-clc
-commandwindow
+clear all; close all; clc;
 
 %% Create folder structure 
-% !!! Make sure to run this from the home folder of the pipeline !!!
-% Otherwise, you will get nested folders.
 
-% Provide directory containing the pipeline
-% adjust to the path pointing to where the pipeline is stored on your local machine.
-addpath("/home/adamt/projects/youthDM/eegCovid/")
-addpath("/home/adamt/projects/youthDM/eegCovid/functions/")
+% Provide directory containing the pipeline and its functions
+thisFile = mfilename('fullpath');
+if ~contains(thisFile, 'main_script') || isempty(thisFile)
+    thisFile = matlab.desktop.editor.getActiveFilename;
+end
+scriptDir = fileparts(thisFile);
+addpath(scriptDir);
+addpath(scriptDir + "/functions/");
+cd(scriptDir);
 
 % Create new analysis folder
 makefolders = 1; % set to 1 to create analysis directories (only set to 0 if the same exact analysis folder already exists)
@@ -32,7 +31,7 @@ if makefolders == 1
 end
 
 %% Provide correct paths
-% change FieldTrip folder, the rest should be okay
+% If the default paths are okay, this step can be skipped
 edit("setPaths.m")
 
 %% Set paths

@@ -14,7 +14,13 @@ fprintf(fid, 'PATHS.REMOVED = ''%s''; %% path to removed subjects directory\n', 
 fprintf(fid, 'PATHS.CONFIG = ''%s''; %% path to config directory\n', [path2root filesep 'config']);
 fprintf(fid, 'PATHS.SUMMARY = ''%s''; %% path to summary directory\n', [path2root filesep 'summary']);
 fprintf(fid, 'PATHS.PIPELINE = ''%s''; %% path to pipeline functions\n', [path2home filesep 'functions' filesep]);
-fprintf(fid, 'PATHS.FTPATH = ''''; %% path to FieldTrip directory\n');
+fprintf("\nSelect FieldTrip directory...");
+ftpath = 0;
+while ftpath == 0
+    ftpath = uigetdir(pwd, "Select FieldTrip directory");
+end
+fprintf(" done\nselected: %s\n", ftpath);
+fprintf(fid, 'PATHS.FTPATH = ''%s''; %% path to FieldTrip directory\n', ftpath);
 
 fprintf(fid,'\n%% create, if necessary the folders \nif ~exist(PATHS.SUBJECTS, ''dir'')\n\tmkdir(PATHS.SUBJECTS)\nend\n');
 fprintf(fid,'if ~exist(PATHS.REMOVED, ''dir'')\n\tmkdir(PATHS.REMOVED)\nend\n');
