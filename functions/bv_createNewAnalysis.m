@@ -13,20 +13,10 @@ function bv_createNewAnalysis(str, overwrite)
 % function will create the following folder structure within the current
 % working directory
 % |_ RAW                        (folder to add raw EEG files to)
-% |_ PREPROC                    (folder in which preprocesssed EEG files will be
-%                                   placed)
-% |_ files                      (folder for extra files, f.e. logs and
-%                                   questionnaires)
 % |_ Analyses                   (home folder of all analyses)
 %   |_ [date '_' label]         (current new analysis homefolder)
 %       |_ config               (folder where configuration files are automatically
 %                                   saved, saved as PATHS.CONFIG)
-%       |_ figures              (folder where figures are automatically saved, 
-%                                   saved as PATHS.FIGURES)
-%       |_ results              (folder where results are automatically saved,
-%                                   saved as PATHS.RESULTS)
-%       |_ subfunctions         (folder for functions specifically made for the
-%                                   current analysis, saved as PATHS.SUBFUNCTIONS)
 %       |_ Subjects             (folder where subject folders will be created and
 %                                   saved)
 %           |_ removed          (folder where removed subjects will be
@@ -59,7 +49,6 @@ end
 PATHS.HOME = pwd;
 PATHS.ANALYSES = [PATHS.HOME filesep 'Analyses'];
 PATHS.RAW = [PATHS.HOME filesep 'RAW'];
-PATHS.PREPROC = [PATHS.HOME filesep 'PREPROC'];
 
 dateFormat = 'yyyymmdd';
 currDate = datestr(now, dateFormat);
@@ -76,14 +65,6 @@ end
 
 [~, msg] = mkdir(PATHS.RAW);
 fprintf('\traw folder: ')
-if ~isempty(msg)
-    fprintf([msg '\n'])
-else
-    fprintf('created \n');
-end
-
-[~, msg] = mkdir(PATHS.PREPROC);
-fprintf('\tpreproc folder: ')
 if ~isempty(msg)
     fprintf([msg '\n'])
 else
