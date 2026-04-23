@@ -187,7 +187,7 @@ fprintf('\n')
 if setPathExist && setOptionsExist && preprocessExist && logExist
     fprintf('function finished with no problems !\n')
 else
-    fprintf('!!function finished with (several) warnings, please check \n')
+    warning('Function finished with (several) warnings, please check')
 end
 
 cd(PATHS.CURRANALYSIS)

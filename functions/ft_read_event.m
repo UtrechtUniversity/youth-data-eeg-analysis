@@ -1,5 +1,4 @@
 function [event] = ft_read_event(filename, varargin)
-
 % FT_READ_EVENT reads all events from an EEG/MEG dataset and returns
 % them in a well defined structure. It is a wrapper around different
 % EEG/MEG file importers, directly supported formats are CTF, Neuromag,

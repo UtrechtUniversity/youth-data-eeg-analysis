@@ -1,1 +1,0 @@
-function bv_barDataVsGroup
