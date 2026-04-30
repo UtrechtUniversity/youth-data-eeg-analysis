@@ -4,13 +4,16 @@ function bv_createSubjectFolders_NewStruct(cfg)
 % each folder with individual information and paths to important files.
 %
 % This version expects raw data in a nested folder structure:
-%   PATHS.RAWS / WAVE / EXPERIMENT / PSEUDO / file.<dataType>
+%   PATHS.RAWS / WAVE / PSEUDO / file.<dataType>
+%
+% The number of folder levels is controlled by cfg.folderlabel; levels can
+% be skipped by simply removing them from that list (and from folderPattern).
 %
 % The output folder structure (PATHS.SUBJECTS/PSEUDO_WAVE) and the contents
 % of each Subject.mat are identical to bv_createSubjectFolders_YOUth.
 %
 % Use as
-%   bv_createSubjectFolders_YOUth2( cfg )
+%   bv_createSubjectFolders_NewStruct( cfg )
 %
 % Required fields:
 %   cfg.rawdelim        ' string ' delimiter used when joining the parts of
@@ -22,20 +25,19 @@ function bv_createSubjectFolders_NewStruct(cfg)
 %   cfg.dataType        ' string ' raw data type: 'bdf', 'eeg', or 'mat'
 %
 % Optional fields:
-%   cfg.folderlabel     { cell } names for each folder level below
-%                       PATHS.RAWS, in order. These are stored as fields on
-%                       the Subject struct.
-%                       Default: {'wave', 'experiment', 'pseudo'}
 %   cfg.rawlabel        { cell } names for parts of the filename, split by
 %                       cfg.rawdelim. Use [] to skip a part. These are
 %                       stored as fields on the Subject struct.
 %                       Default: {} (filename is not parsed)
-%   cfg.wavePattern     ' string ' regex applied to wave-level folder names.
-%                       Default: '' (match all)
-%   cfg.expPattern      ' string ' regex applied to experiment-level folder
-%                       names. Default: '' (match all)
-%   cfg.pseudoPattern   ' string ' regex applied to pseudo-level folder
-%                       names. Default: '' (match all)
+%   cfg.folderlabel     { cell } names for each folder level below
+%                       PATHS.RAWS, in order. These are stored as fields on
+%                       the Subject struct.
+%                       Default: {'wave', 'experiment', 'pseudo'}
+%   cfg.folderPattern   { cell } one regex string per folder level (matching
+%                       the order of cfg.folderlabel). Use '' to match all
+%                       directories at a given level. Omitting a level from
+%                       cfg.folderlabel (and this array) skips it entirely.
+%                       Default: '' for every level
 %   cfg.filePattern     ' string ' regex applied to filenames.
 %                       Default: '' (match all)
 %   cfg.pathsFcn        ' string ' m-file that sets PATHS and OPTIONS
@@ -52,10 +54,8 @@ prevAnalysis    = ft_getopt(cfg, 'prevAnalysis', 'preproc');
 rawdelim        = ft_getopt(cfg, 'rawdelim');
 sfolderstruct   = ft_getopt(cfg, 'sfoldername');
 inputnames      = ft_getopt(cfg, 'rawlabel', {});
-folderlabel     = ft_getopt(cfg, 'folderlabel', {'wave', 'experiment', 'pseudo'});
-wavePattern     = ft_getopt(cfg, 'wavePattern', '');
-expPattern      = ft_getopt(cfg, 'expPattern', '');
-pseudoPattern   = ft_getopt(cfg, 'pseudoPattern', '');
+folderlabel     = ft_getopt(cfg, 'folderlabel', {'wave', 'pseudo'});
+folderPattern   = ft_getopt(cfg, 'folderPattern', []);
 filePattern     = ft_getopt(cfg, 'filePattern', '');
 dataType        = ft_getopt(cfg, 'dataType');
 overwrite       = ft_getopt(cfg, 'overwrite', 'no');
@@ -81,7 +81,7 @@ if strcmpi(dataType, 'mat')
         error('no files found for inputstring: %s \n', prevAnalysis)
     end
 else
-    files = discoverFiles(PATHS.RAWS, dataType, wavePattern, expPattern, pseudoPattern, filePattern);
+    files = discoverFiles(PATHS.RAWS, dataType, folderPattern, filePattern);
     if isempty(files)
         error('no %s files found under %s matching the given patterns', dataType, PATHS.RAWS)
     end
@@ -220,36 +220,42 @@ logstrct.totalStartSubjects = nSubjects;
 
 
 % =========================================================================
-function files = discoverFiles(rawsPath, dataType, wavePattern, expPattern, pseudoPattern, filePattern)
-% Traverse WAVE/EXPERIMENT/PSEUDO folder levels under rawsPath and collect
-% all files matching dataType and the given regex patterns.
+function files = discoverFiles(rawsPath, dataType, folderPatterns, filePattern)
+% Traverse an arbitrary number of folder levels under rawsPath and collect
+% all files matching dataType. folderPatterns is a cell array with one
+% regex string per level ('' matches everything). Fewer levels means a
+% shallower directory traversal.
 
-fileList = {};
-
-waveDirs = listFilteredDirs(rawsPath, wavePattern);
-for w = 1:length(waveDirs)
-    wPath   = fullfile(rawsPath, waveDirs(w).name);
-    expDirs = listFilteredDirs(wPath, expPattern);
-    for e = 1:length(expDirs)
-        ePath      = fullfile(wPath, expDirs(e).name);
-        pseudoDirs = listFilteredDirs(ePath, pseudoPattern);
-        for p = 1:length(pseudoDirs)
-            pPath    = fullfile(ePath, pseudoDirs(p).name);
-            rawFiles = dir(fullfile(pPath, ['*.' dataType]));
-            if ~isempty(filePattern)
-                rawFiles = rawFiles(~cellfun(@isempty, regexp({rawFiles.name}, filePattern)));
-            end
-            if ~isempty(rawFiles)
-                fileList{end+1} = rawFiles; %#ok<AGROW>
-            end
-        end
-    end
-end
+fileList = traverseLevel(rawsPath, dataType, folderPatterns, filePattern);
 
 if isempty(fileList)
     files = struct([]);
 else
     files = vertcat(fileList{:});
+end
+
+
+% =========================================================================
+function fileList = traverseLevel(currentPath, dataType, remainingPatterns, filePattern)
+% Recursively descend one folder level per call. When remainingPatterns is
+% exhausted, collect matching files in the current directory.
+
+fileList = {};
+
+if isempty(remainingPatterns)
+    rawFiles = dir(fullfile(currentPath, ['*.' dataType]));
+    if ~isempty(filePattern)
+        rawFiles = rawFiles(~cellfun(@isempty, regexp({rawFiles.name}, filePattern)));
+    end
+    if ~isempty(rawFiles)
+        fileList = {rawFiles};
+    end
+else
+    subDirs = listFilteredDirs(currentPath, remainingPatterns{1});
+    for d = 1:length(subDirs)
+        subList  = traverseLevel(fullfile(currentPath, subDirs(d).name), dataType, remainingPatterns(2:end), filePattern);
+        fileList = [fileList, subList]; %#ok<AGROW>
+    end
 end
 
 

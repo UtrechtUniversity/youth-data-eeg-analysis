@@ -20,11 +20,9 @@ OPTIONS.CREATEFOLDERS.sfoldername   = {'pseudo', 'wave'}; % how your subject fol
 OPTIONS.CREATEFOLDERS.overwrite     = 'yes';
 OPTIONS.CREATEFOLDERS.dataType      = 'bdf'; % data type (can be 'bdf, 'eeg', 'mat')
 
-OPTIONS.CREATEFOLDERS.folderlabel   = {'wave', 'experiment', 'pseudo'};
 OPTIONS.CREATEFOLDERS.rawlabel      = {'pseudo', 'wave'}; % label the seperate elements of eeg file name (with delimiters in between)
-OPTIONS.CREATEFOLDERS.wavePattern   = '';
-OPTIONS.CREATEFOLDERS.expPattern    = 'facehouse';
-OPTIONS.CREATEFOLDERS.pseudoPattern = 'B';
+OPTIONS.CREATEFOLDERS.folderlabel   = {'wave', 'pseudo'};
+OPTIONS.CREATEFOLDERS.folderPattern = {'', 'B'};
 OPTIONS.CREATEFOLDERS.filePattern   = '';
 
 %% Preprocessing options
