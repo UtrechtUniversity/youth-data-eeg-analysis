@@ -24,7 +24,7 @@ function [data, subjectdata] = bv_removeChannels(cfg, data, artefactdef)
 %                           'flatline'. Example (cfg.lims.kurtosis = 7)
 %   cfg.maxpercbad      = [ number ]: max percentage of bad trials before a
 %                           channel is removed (default = 40);
-%   cfg.maxtrials       = [ number ]: number of expected trials in dataset
+%   cfg.expectedtrials  = [ number ]: number of expected trials in dataset
 %   cfg.repairchans     = 'yes/no': set to 'yes' to interpolate channels
 %                           by weighting neighboring channels 
 %                           (triangulation). Uses ft_channelrepair and
@@ -66,7 +66,7 @@ outputName      = ft_getopt(cfg, 'outputName');
 artefactData    = ft_getopt(cfg, 'artefactData');
 saveData        = ft_getopt(cfg, 'saveData');
 maxpercbad      = ft_getopt(cfg, 'maxpercbad', 40);
-expectedtrials  = ft_getopt(cfg, 'maxtrials');
+expectedtrials  = ft_getopt(cfg, 'expectedtrials');
 repairchans     = ft_getopt(cfg, 'repairchans');
 overwrite       = ft_getopt(cfg, 'overwrite');
 quiet           = ft_getopt(cfg, 'quiet', false);

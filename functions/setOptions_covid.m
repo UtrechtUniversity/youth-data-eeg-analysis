@@ -41,6 +41,7 @@ OPTIONS.PREPROC.overwrite       = 1; % [ number ]: set to 1 to overwrite existin
 OPTIONS.PREPROC.reref           = 'no'; % 'string': 'yes' to rereference data (default: 'no') 
 OPTIONS.PREPROC.refelec         = ''; % rereference electrode (string / number / cell of strings) 
 OPTIONS.PREPROC.overwrite       = 'yes';
+OPTIONS.PREPROC.channels        = {'EEG'};
 
 %% Calculate artifact values after preprocessing
 OPTIONS.ARTFCTPREPROC.inputName       = 'PREPROC';

@@ -1,16 +1,17 @@
 function [ data, subjectdata ] = bv_preprocResample(cfg)
 % bv_preprocResample reads-in, preprocesses (and resamples) raw EEG data,
-% based on FT_PREPROCESSING of the fieldtrip toolbox and applies several
-% user-specified preprocessing steps to the signals. The function uses
+% based on FT_PREPROCESSING of the FieldTrip toolbox and applies several
+% user-specified preprocessing steps to the signal. The function uses
 % subject information (stored in an individual Subject.mat file) gathered
 % with the BV_CREATESUBJECTFOLDERS, so please run that function first.
 % Order of preprocessing:
 %           1) reading-in data
-%           2) resampling
-%           3) rereferencing
-%           4) interpolating bad channels
-%           5) filtering
-%           6) cut data in trials
+%           2) interpolating bad channels
+%           3) resampling
+%           4) filtering
+%           5) rereferencing
+%           6) wavelet thresholding
+%           7) cut data in trials
 %
 % Use as
 % [ data ] = bv_preprocResample( cfg )
@@ -232,7 +233,7 @@ end
 if strcmpi(interpolate, 'yes')
     if isempty(subjectdata.channels2remove) & isfield(subjectdata.PATHS, 'PREPROC')
         subjectdata.PATHS.(outputName) = subjectdata.PATHS.PREPROC;
-        if ~quiet; fprintf('\t no channels found to remove, continueing...'); end
+        if ~quiet; fprintf('\t no channels found to remove, continuing...'); end
         evalc('[~,~, data] = bv_check4data(subjectdata.PATHS.SUBJECTDIR, ''PREPROC'');');
         
         if strcmpi(saveData, 'yes')
@@ -433,7 +434,7 @@ if ~isempty(trialfun)
     eval(['[trl] = ' trialfun '(cfg);'])
     
     if isempty(trl)
-        if ~quiet; fprintf('\n \t \t no trials found, removing subject and continueing ... \n'); end
+        if ~quiet; fprintf('\n \t \t no trials found, removing subject and continuing ... \n'); end
         subjectdata.nTrialsPreproc = 0;
         if ~quiet
             bv_saveData(subjectdata)
