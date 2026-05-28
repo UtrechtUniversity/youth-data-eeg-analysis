@@ -10,12 +10,13 @@ clear all; close all; clc;
 
 %% Create folder structure 
 
-% Provide directory containing the pipeline and its functions
+% Get directory containing the pipeline and its functions
 thisFile = mfilename('fullpath');
 if ~contains(thisFile, 'main_script') || isempty(thisFile)
     thisFile = matlab.desktop.editor.getActiveFilename;
 end
 scriptDir = fileparts(thisFile);
+
 addpath(scriptDir);
 addpath(scriptDir + "/functions/");
 cd(scriptDir);
@@ -41,6 +42,5 @@ setPaths
 % If the default settings are okay, this step can be skipped
 edit setOptions
 
-%% Preprocessing 
-
+%% Preprocessing
 preprocessingData
