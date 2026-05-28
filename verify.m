@@ -3,8 +3,9 @@
 % pipeline to run without problems.
 
 %% Clear workspace first
+
 restoredefaultpath
-clear all; close all; clc;
+clear all; clc;
 
 %% MATALB Version
 
@@ -42,13 +43,14 @@ else
 end
 
 %% Fieldtrip
-fprintf("\nSelect the main FieldTrip directory... ")
-
-ftpath = uigetdir(pwd, "Select FieldTrip directory");
-
-fprintf("done\n  selected: %s\n", ftpath)
+thisFile = mfilename('fullpath');
+if ~contains(thisFile, 'verify') || isempty(thisFile)
+    thisFile = matlab.desktop.editor.getActiveFilename;
+end
+scriptDir = fileparts(thisFile);
+ftpath = fullfile(scriptDir, 'fieldtrip');
 addpath(ftpath)
-
+%%
 try
     initOutput = evalc('ft_defaults');
 catch ME
@@ -56,8 +58,12 @@ catch ME
           '✗ FieldTrip failed to initialise:\n%s', ME.message);
 end
 
-required = {'ft_preprocessing', 'ft_freqanalysis', 'ft_connectivityanalysis', ...
-            'ft_prepare_layout', 'ft_componentanalysis'};
+% direct project dependencies only; FieldTrip's own internal deps are not checked
+required = {'ft_artifact_jump', 'ft_channelrepair', 'ft_defaults', ...
+            'ft_definetrial', 'ft_getopt', 'ft_prepare_layout', ...
+            'ft_prepare_neighbours', 'ft_preprocessing', 'ft_read_event', ...
+            'ft_read_header', 'ft_redefinetrial', 'ft_resampledata', ...
+            'ft_selectdata'};
 missing = required(cellfun(@(f) isempty(which(f)), required));
 
 if ~isempty(missing)
@@ -66,12 +72,11 @@ if ~isempty(missing)
     fprintf(2, '  Likely a partial/broken FieldTrip install or path issue.\n');
     fprintf(2, '%s\n', initOutput);
 else
-    ftVer = ft_version;
-    fprintf(1, '✓ FieldTrip %s initialised cleanly, all required functions available.\n', ...
-            ftVer);
+    fprintf(1, '✓ FieldTrip initialised cleanly, all required functions available.\n');
 end
 
 %% Clean up
 
+restoredefaultpath;
 clear required missing matlb licenseNames initOutput hasLicense ...
-      ftVer ftpath displayNames
+      ftpath displayNames scriptDir thisFile RESTOREDEFAULTPATH_EXECUTED;
