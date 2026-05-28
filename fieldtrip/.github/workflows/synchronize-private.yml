@@ -1,0 +1,49 @@
+name: Synchronize private files
+
+on:
+  workflow_dispatch:  # Allows manual triggering
+  push:
+    branches:
+      - master
+      - main
+
+jobs:
+  synchronize-private:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # Required to push changes back
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0  # Fetch all history for proper commits
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Identify files that changed
+      id: changed-files  # ← ADD THIS LINE
+      uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
+
+    - name: Synchronize files that changed
+      run: |
+        python .github/scripts/synchronize-private.py ${{ steps.changed-files.outputs.all_changed_files }}
+
+    - name: Configure Git
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+    - name: Commit changes
+      run: |
+        git add .
+        git diff --quiet && git diff --staged --quiet || git commit -m "Automatically synchronized files"
+
+    - name: Push changes
+      run: |
+        git push origin HEAD:${GITHUB_REF#refs/heads/}
