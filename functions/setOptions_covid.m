@@ -90,7 +90,8 @@ OPTIONS.REREF.reref           = 'yes'; % 'string': 'yes' to rereference data (de
 OPTIONS.REREF.refelec         = 'all'; % rereference electrode (string / number / cell of strings) 
 OPTIONS.REREF.removechans     = 'yes';
 OPTIONS.REREF.waveletThresh   = 'no';  
-OPTIONS.REREF.interpolate     = 'yes';  
+OPTIONS.REREF.interpolate     = 'yes';
+OPTIONS.REREF.interpMethod    = 'average';
 
 %% Calculate artifact values after preprocessing
 OPTIONS.ARTFCTRMCHANNELS.inputName       = 'PREPROCRMCHANNELS';

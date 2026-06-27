@@ -126,6 +126,7 @@ dataset             = ft_getopt(cfg, 'dataset');
 hdrfile             = ft_getopt(cfg, 'hdrfile');
 overwrite           = ft_getopt(cfg, 'overwrite', 'no');
 interpolate         = ft_getopt(cfg, 'interpolate', 'no');
+interpMethod        = ft_getopt(cfg, 'interpMethod', 'average');
 quiet               = ft_getopt(cfg, 'quiet', 'no');
 waveletThresh       = ft_getopt(cfg, 'waveletThresh', 'no');
 channels            = ft_getopt(cfg, 'channels');
@@ -326,7 +327,7 @@ if strcmpi(interpolate, 'yes')
 
             cfg = [];
             cfg.missingchannel = subjectdata.channels2remove';
-            cfg.method = 'average';
+            cfg.method = interpMethod;
             cfg.neighbours = neighbours;
             cfg.layout = layout;
             evalc('data = ft_channelrepair(cfg, data);');
