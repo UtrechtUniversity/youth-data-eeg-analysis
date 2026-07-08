@@ -36,3 +36,16 @@ for iSubjects = startSubject:endSubject
 
     connectivity = bv_calculatePLI(cfg);
 end
+
+%% CALCULATE FC STRENGTH
+clear OPTIONS; setOptionsNetmet
+
+[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+for iSubjects = startSubject:endSubject
+
+    cfg             = OPTIONS.STRENGTH;
+    cfg.currSubject = subjectFolderNames{iSubjects};
+    cfg.quiet       = 'no';
+
+    strength = bv_calculateStrength(cfg);
+end
