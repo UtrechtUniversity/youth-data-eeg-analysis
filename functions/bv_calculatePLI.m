@@ -167,7 +167,7 @@ if strcmpi(saveData, 'yes')
     
     outputFilename = [subjectdata.subjectName '_' outputName '.mat'];
     fieldname = upper(outputName);
-    subjectdata.PATHS.(fieldname) = [subjectdata.PATHS.SUBJECTDIR filesep ...
+    subjectdata.PATHS.(fieldname) = [subjectdata.PATHS.NETMETDIR filesep ...
         outputFilename];
     
     if ~quiet

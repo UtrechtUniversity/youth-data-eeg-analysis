@@ -16,16 +16,16 @@ clear OPTIONS; setOptions
 
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
 parfor iSubjects = startSubject:endSubject
-    
-        
+
+
         currSubject = subjectFolderNames{iSubjects};
         cfg             = OPTIONS.PREPROC;
         cfg.currSubject = currSubject;
         cfg.quiet       = 'yes';
         cfg.overwrite   = 'no';
-        
+
         data = bv_preprocResample(cfg);
-        
+
 end
 
 %% CALCULATE ARTEFACTS IN PREPROC DATA
@@ -34,11 +34,11 @@ clear OPTIONS; setOptions
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
 parfor iSubjects = startSubject:endSubject
     currSubject = subjectFolderNames{iSubjects};
-    
+
     cfg             = OPTIONS.ARTFCTPREPROC;
     cfg.currSubject = currSubject;
     cfg.quiet       = 'yes';
-    
+
     artefactdef = bv_createArtefactStruct(cfg);
 end
 
@@ -49,13 +49,13 @@ clear OPTIONS; setOptions
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
 parfor iSubjects = startSubject:endSubject
     currSubject = subjectFolderNames{iSubjects};
-    
+
     cfg             = OPTIONS.RMCHANNELS;
     cfg.currSubject = currSubject;
     cfg.quiet       = 'yes';
-    
+
     data = bv_removeChannels(cfg);
-    
+
 end
 
 %% PREPROCESSING AGAIN WITH REREF AND WITHOUT REMOVED CHANNELS
@@ -64,11 +64,11 @@ clear OPTIONS; setOptions
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
 parfor iSubjects = startSubject:endSubject
     currSubject = subjectFolderNames{iSubjects};
-    
+
     cfg             = OPTIONS.REREF;
     cfg.currSubject = currSubject;
     cfg.quiet       = 'yes';
-    
+
     data = bv_preprocResample(cfg);
 
 end
@@ -78,29 +78,29 @@ clear OPTIONS; setOptions
 
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
 parfor iSubjects = startSubject:endSubject
-    
+
     currSubject = subjectFolderNames{iSubjects};
-    
+
     cfg             = OPTIONS.ARTFCTRMCHANNELS;
     cfg.currSubject = currSubject;
     cfg.quiet       = 'yes';
-    
+
     artefactdef = bv_createArtefactStruct(cfg);
-    
+
 end
 
-%% REMOVE TRIALS 
+%% REMOVE TRIALS
 clear OPTIONS; setOptions
 
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
 parfor iSubjects = startSubject:endSubject
 
     currSubject = subjectFolderNames{iSubjects};
-    
+
     cfg             = OPTIONS.CLEANED;
     cfg.currSubject = currSubject;
     cfg.quiet       = 'yes';
-    
+
     data = bv_cleanData(cfg);
 end
 
@@ -113,23 +113,7 @@ parfor iSubjects = startSubject:endSubject
     cfg             = OPTIONS.APPENDED;
     cfg.currSubject = subjectFolderNames{iSubjects};
     cfg.quiet       = 'yes';
-    
+
     data = bv_appendfieldtripdata(cfg);
-    
+
 end
-
-
-
-%% Calculate PLI connectivity
-clear OPTIONS; setOptions
-
-[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
-parfor iSubjects = startSubject:endSubject
-
-    cfg             = OPTIONS.PLICONNECTIVITY;
-    cfg.currSubject = subjectFolderNames{iSubjects};
-    cfg.quiet       = 'yes';
-    
-    [ connectivity ] = bv_calculatePLI(cfg);
-end
-

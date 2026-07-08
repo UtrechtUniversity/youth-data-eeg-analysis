@@ -133,21 +133,3 @@ for iSubjects = startSubject:endSubject
         removingSubjects([], currSubject, ME.message);
     end
 end
-
-%% Calculate PLI connectivity
-clear OPTIONS; setOptions
-
-[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
-for iSubjects = startSubject:endSubject
-
-    currSubject     = subjectFolderNames{iSubjects};
-    cfg             = OPTIONS.PLICONNECTIVITY;
-    cfg.currSubject = currSubject;
-    cfg.quiet       = 'no';
-
-    try
-        [ connectivity ] = bv_calculatePLI(cfg);
-    catch ME
-        removingSubjects([], currSubject, ME.message);
-    end
-end
