@@ -98,7 +98,7 @@ if ~overwrite && exist([PATHS.CURRANALYSIS filesep 'setOptions.m'], 'file')
     setOptionsExist = true(1);
     fprintf('setOptions.m already exists, not overwriting \n')
 else
-    setOptionsExist = copyfile(which('setOptions_covid'), [PATHS.CURRANALYSIS filesep 'setOptions.m']);
+    setOptionsExist = copyfile(which('setOptions_preproc'), [PATHS.CURRANALYSIS filesep 'setOptions.m']);
 
     if setOptionsExist
         fprintf('setOptions.m created \n')
