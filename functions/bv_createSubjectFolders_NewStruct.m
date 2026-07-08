@@ -167,12 +167,15 @@ for subjIndex = 1:length(files)
 
     preprocDir = fullfile(paths2SubjectFolder, 'preproc');
     powerDir   = fullfile(paths2SubjectFolder, 'power');
+    netmetDir  = fullfile(paths2SubjectFolder, 'netmet');
     if ~exist(preprocDir, 'dir'); mkdir(preprocDir); end
     if ~exist(powerDir, 'dir');   mkdir(powerDir);   end
+    if ~exist(netmetDir, 'dir');  mkdir(netmetDir);  end
 
     subjectdata.PATHS.SUBJECTDIR = paths2SubjectFolder;
     subjectdata.PATHS.PREPROCDIR = preprocDir;
     subjectdata.PATHS.POWERDIR   = powerDir;
+    subjectdata.PATHS.NETMETDIR  = netmetDir;
     subjectdata.date = date;
     subjectdata.removed       = false(1);
     subjectdata.removedDuring = '';
