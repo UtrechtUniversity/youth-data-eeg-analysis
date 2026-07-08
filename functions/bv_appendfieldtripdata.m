@@ -1,49 +1,67 @@
 function data = bv_appendfieldtripdata(cfg, dataOld)
-% appends data in fieldtrip data structure based on data.sampleinfo, output
-% data can be used in concurrence with bv_cutAppendedIntoTrials to cut into
-% trials of desired length
+% Appends trials in a FieldTrip data structure based on sampleinfo.
 %
-% can be used with data-input as:
-%  [ appendeddata ] = bv_appendfieldtripdata(cfg, data)
+% Output is suitable for use with bv_cutAppendedIntoTrials to segment
+% into trials of a desired length.
 %
-% or without data-input as:
-%  [ appendeddata ] = bv_appendfieldtripdata(cfg)
+% Args:
+%     cfg.currSubject (str): Subject folder name. Required when no data
+%         is provided.
+%     cfg.inputName (str): Field name in ``subjectdata.PATHS`` used to load
+%         input data. Required when no data is provided.
+%     cfg.saveData (str): Whether to save output to disk (``'yes'`` or
+%         ``'no'``). Required when no data is provided.
+%     cfg.outputName (str): Unique label for output file and
+%         ``subjectdata.PATHS`` entry. Required when saving data.
+%     cfg.pathsFcn (str, optional): Paths function filename. Must resolve
+%         to a valid file on the MATLAB path. Defaults to ``'setPaths'``.
+%     cfg.optionsFcn (str, optional): Options function filename. Must
+%         resolve to a valid file on the MATLAB path.
+%         Defaults to ``'setOptions'``.
+%     cfg.overwrite (str, optional): Whether to overwrite existing output
+%         (``'yes'`` or ``'no'``). Defaults to ``'no'``.
+%     cfg.quiet (str, optional): Suppress command window output
+%         (``'yes'`` or ``'no'``). Defaults to ``'no'``.
+%     dataOld (struct, optional): FieldTrip data structure containing
+%         multiple trials. If omitted, data is loaded from disk using
+%         ``cfg.currSubject`` and ``cfg.inputName``.
 %
-% INPUTS:
-% needs the following fields in cfg-structure in the case of no data-input:
-%   cfg.currSubject = 'string', subject folder name to analyze
-%   cfg.inputName    = 'string', data to be loaded in, using bv_check4data,
-%                       based on subjectdata.PATHS field name (f.e.
-%                       'APPENDED')%
-%   cfg.saveData    = 'yes/no', determines whether data is saved to disk in
-%                       subjectfolder, based on cfg.outputName with
-%                       bv_saveData
-%   cfg.outputName   = 'string', used to save data to unique file, with
-%                       unique entry into subjectdata.PATHS
-%   cfg.pathsFcn    = path to paths function needed to run
-%                       analysis-pipeline (default: './setPaths')
-%   cfg.optionsFcn  = path to options function needed to run
-%                       analysis-pipeline (default: './setOptions')
+% Returns:
+%     data (struct): FieldTrip data appended according to sampleinfo.
+%         Returns empty (``[]``) if output already exists and
+%         ``cfg.overwrite`` is ``'no'``.
+%
+% Note:
+%     When dataOld is provided, ``cfg.saveData`` is ignored and the result
+%     is never saved to disk.
+%
+% Example:
+%     Load data from disk and save the result:
+%
+%     ```matlab
+%     cfg.currSubject = 'B12345_99m';
+%     cfg.inputName   = 'CLEANED';
+%     cfg.outputName  = 'APPEND';
+%     cfg.saveData    = 'yes';
+%     data = bv_appendfieldtripdata(cfg);
+%     ```
+%
+%     With pre-loaded data:
+%
+%     ```matlab
+%     cfg = struct();
+%     data = bv_appendfieldtripdata(cfg, data);
+%     ```
 
-%   data: fieldtrip data structure, which should consist of multiple trials
-%
-% OUTPUTS:
-%   appenddata = data appended according to data.sampleinfo
-%
-% See also, BV_CUTAPPENDEDINTOTRIALS, FT_REDEFINETRIAL
-%
-
-%%%% get general options and load in data if necessary %%%%
+%% get options
 currSubject = ft_getopt(cfg, 'currSubject');
-inputName    = ft_getopt(cfg, 'inputName');
-outputName   = ft_getopt(cfg, 'outputName');
+inputName   = ft_getopt(cfg, 'inputName');
 saveData    = ft_getopt(cfg, 'saveData');
+outputName  = ft_getopt(cfg, 'outputName');
 pathsFcn    = ft_getopt(cfg, 'pathsFcn', 'setPaths');
 optionsFcn  = ft_getopt(cfg, 'optionsFcn', 'setOptions');
 overwrite   = ft_getopt(cfg, 'overwrite', 'no');
 quiet       = ft_getopt(cfg, 'quiet', 'no');
-
-cfgIn = cfg;
 
 if strcmpi(quiet, 'yes')
     quiet = true;
@@ -51,6 +69,7 @@ else
     quiet = false;
 end
 
+%% load in data (if necessary)
 if nargin < 2
     eval(optionsFcn);
     eval(pathsFcn);
@@ -58,22 +77,16 @@ if nargin < 2
     subjectFolderPath = [PATHS.SUBJECTS filesep currSubject];
     
     if strcmpi(overwrite, 'no') & strcmpi(saveData, 'yes') & ...
-            exist([subjectFolderPath filesep currSubject '_' upper(outputName) '.mat'])
+            exist(fullfile(subjectFolderPath, 'preproc', [currSubject '_' upper(outputName) '.mat']), 'file')
         if ~quiet
-            fprintf('\t !!!%s already found, not overwriting ... \n', upper(outputName))
+            fprintf('\t ⚠ %s already found, not overwriting ... \n', upper(outputName))
         end
         data = [];
         return
     end
-    
-    if ~quiet
-        disp(currSubject)
-        [subjectdata] = bv_check4data(subjectFolderPath);
-    else
-        evalc('[subjectdata] = bv_check4data(subjectFolderPath);');
-    end
 
     if ~quiet
+        disp(currSubject)
         [subjectdata, ~, dataOld] = bv_check4data(subjectFolderPath, inputName);
     else
         evalc('[subjectdata, ~, dataOld] = bv_check4data(subjectFolderPath, inputName);');
@@ -84,17 +97,14 @@ else
     saveData = 'no';
 end
 
-%%%% calculating own trl for appending data %%%%
+%% calculating own trl for appending data
 if ~quiet; fprintf('\t appending cleaned data based on data.sampleinfo ... '); end
-fsample = dataOld.fsample;
-triallength = size(dataOld.trial{1},2) ./ 512;
 startTrial = dataOld.sampleinfo(:,1);
 endTrial = dataOld.sampleinfo(:,2);
-tmptrl(:,1) = startTrial(find([1; diff(startTrial) ~= length(dataOld.trial{1})]));
-tmptrl(:,2) = endTrial(find([diff(startTrial) ~= length(dataOld.trial{1}); 1]));
+tmptrl(:,1) = startTrial(logical([1; diff(startTrial) ~= length(dataOld.trial{1})]));
+tmptrl(:,2) = endTrial(logical([diff(startTrial) ~= length(dataOld.trial{1}); 1]));
 
 if isfield(dataOld, 'trialinfo')
-    trialinfo = dataOld.trialinfo;
     tmptrialinfo = dataOld.trialinfo(ismember(dataOld.sampleinfo(:,1), tmptrl(:,1)));
     
     trl = [tmptrl zeros(length(tmptrialinfo),1) tmptrialinfo];
@@ -102,15 +112,16 @@ else
     trl = [tmptrl zeros(length(tmptrl),1)];
 end
 
-%%%% redefining trials based on calculated trl %%%%
+%% redefining trials based on calculated trl
 cfg = [];
 cfg.trl = trl;
 evalc('data = ft_redefinetrial(cfg, dataOld);');
 if ~quiet; fprintf('done! \n'); end
 
+%% save data
 if strcmpi(saveData, 'yes')
     if ~quiet
-        bv_saveData(subjectdata, data, outputName);
+        bv_saveData(subjectdata, data, outputName); %#ok<NODEF>
     else
         evalc('bv_saveData(subjectdata, data, outputName);');
     end

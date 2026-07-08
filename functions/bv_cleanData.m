@@ -1,70 +1,63 @@
 function data = bv_cleanData(cfg, data, artefactdef)
-% bv_cleanData removes artifact-ridden windows and creates a clean data
-% file. Records subjectdata.nEpochsArtefact (windows evaluated) and
-% subjectdata.nCleanEpochsArtefact (windows that survived), plus
-% subjectdata.cleanSampleInfo (sample ranges of the surviving windows).
+% Removes artefact-ridden trials from a FieldTrip data structure.
 %
-% Use as
-%   [data] = bv_cleanData(cfg)
+% Trials exceeding any threshold in ``cfg.lims`` are discarded. Clean trial
+% sample indices are stored in subjectdata.cleanSampleInfo.
 %
-% or as
-%   [data] = bv_cleanData(cfg, data, artefactdef)
+% Args:
+%     cfg.currSubject (str): Subject folder name. Required when no data is
+%         provided.
+%     cfg.inputName (str): Field name in ``subjectdata.PATHS`` used to load
+%         input data. Required when no data is provided.
+%     cfg.artefactData (str): Field name in ``subjectdata.PATHS`` used to
+%         load the artefact struct. Required when no data is provided.
+%     cfg.saveData (str): Whether to save data and subjectdata to disk
+%         (``'yes'`` or ``'no'``). Required when no data is provided.
+%     cfg.outputName (str): Unique label for output file and
+%         ``subjectdata.PATHS`` entry. Required when saving data.
+%     cfg.lims (struct): Rejection thresholds for artefact metrics. Each
+%         field must match a metric in the artefact struct (``kurtosis``,
+%         ``variance``, ``jump``, ``abs``, ``range``, ``flatline``).
+%         Required.
+%     cfg.calculateDataloss (str, optional): Whether to compute and store
+%         the percentage of lost data in subjectdata (``'yes'`` or
+%         ``'no'``). Defaults to ``'no'``.
+%     cfg.datalossLabel (str, optional): The name under which to store
+%         the percentage of lost data in subjectdata. Required when
+%         ``cfg.calculateDataloss`` is ``'yes'``.
+%     cfg.expectedtrials (int, optional): Expected trial count. Required
+%         when ``cfg.calculateDataloss`` is ``'yes'``.
+%     cfg.pathsFcn (str, optional): Paths function filename. Must resolve
+%         to a valid file on the MATLAB path. Defaults to ``'setPaths'``.
+%     cfg.overwrite (str, optional): Whether to overwrite existing output
+%         (``'yes'`` or ``'no'``). Defaults to ``'no'``.
+%     cfg.quiet (str, optional): Suppress command window output
+%         (``'yes'`` or ``'no'``). Defaults to ``'no'``.
+%     data (struct, optional): FieldTrip data structure. If omitted, loaded
+%         from disk using ``cfg.currSubject`` and ``cfg.inputName``.
+%     artefactdef (struct, optional): Artefact struct from
+%         ``bv_createArtefactStruct``. If omitted, loaded from disk using
+%         ``cfg.artefactData``.
 %
-% inputs:
-%   cfg             : input configuration structure
-%   data            : fieldtrip eeg data variable
-%   artefactdef     : structure with artefact information calculated with
-%                       bv_createArtefactStruct
+% Returns:
+%     data (struct): FieldTrip data with artefact trials removed. Returns
+%         empty (``[]``) if output already exists and ``cfg.overwrite`` is
+%         ``'no'``.
 %
-% outputs:
-%   data            : fieldtrip data without removed channels (or with
-%                       repaired channels)
+% Example:
+%     Load data and artefacts from disk, reject trials, and save:
 %
-% the following fields are required in the cfg variable
-%   cfg.lims                = . struct . with limits in number for values
-%                               found in the artefacts struct. Possible
-%                               fields: 'kurtosis', 'variance', 'jump',
-%                               'abs', 'range', 'flatline'. Example
-%                               (cfg.lims.kurtosis = 7)
-%   cfg.calculateDataloss   = 'yes/no'. Set to 'yes' if data loss
-%                               percentage should be calculated and added
-%                               to subjectdata. Also add cfg.expectedtrials
-%                               (default: 'no')
-%
-% the following fields are only required if no data&artefactdef input
-%
-%   cfg.pathsFcn        = 'string': filename of m-file to be read with all
-%                           necessary paths to run this function (default:
-%                           'setPaths').
-%   cfg.currSubject     = 'string': subject folder name to be analyzed
-%   cfg.inputName       = 'string': name of previous analysis to be used
-%                           for this function, as in
-%                           subjectdata.PATHS.(prevAnalysis)
-%   cfg.artefactData    = 'string': name of artefact data to be used for
-%                           this function, as in
-%                           subjectdata.PATHS.(artefactData)
-%   cfg.saveData        = 'yes/no': specifies whether subjectdata needs to
-%                           be saved to personal folder
-%   cfg.saveCleanData   = 'yes/no': specifies whether subjectdata needs to
-%                           be saved to personal folder
-%   cfg.overwrite       = 'yes/no': set to 'yes' if data is allowed to be
-%                           overwritten (default: 'no')
-%
-% the following fields are required if cleaned data is saved
-%   cfg.outputName      = 'string': name for output file. Output will
-%                           be called (currSubject)_(cfg.outputName).mat
-%                           path will be added to subjectdata.PATHS as
-%                           subjectdata.PATHS.(outputName)
-%
-% the following fields are required if data loss is calculated
-%   cfg.expectedtrials  = [ number ]: number of expected trials in dataset
-%
-% the following fields are optional
-%   cfg.quiet           = 'yes/no': set to 'yes' to prevent additional
-%                           details in command window (default: 'no')
-%
-% See also FT_REDEFINA_TRIAL
-% Copyright (C) 2015-2021, Bauke van der Velde
+%     ```matlab
+%     cfg = [];
+%     cfg.currSubject   = 'B12345_99m';
+%     cfg.inputName     = 'FILTERED';
+%     cfg.artefactData  = 'ARTEFACT';
+%     cfg.outputName    = 'CLEANED';
+%     cfg.saveData      = 'yes';
+%     cfg.lims.kurtosis = 7;
+%     cfg.lims.variance = 5;
+%     data = bv_cleanData(cfg);
+%     ```
 
 lims                = ft_getopt(cfg, 'lims');
 pathsFcn            = ft_getopt(cfg, 'pathsFcn');
@@ -86,14 +79,13 @@ else
     quiet = false;
 end
 
-cfgIn = cfg;
-
 if isempty(lims)
     error('Please give cfg.lims struct as input')
 end
 
+%% load data
 saveSubjectData = 'no';
-if nargin < 2 % data loading
+if nargin < 2
     if isempty(pathsFcn)
         error('please add options function cfg.optionsFcn')
     else
@@ -104,7 +96,7 @@ if nargin < 2 % data loading
     if strcmpi(overwrite, 'no') & strcmpi(saveCleanData, 'yes') & ...
             exist([subjectFolderPath filesep currSubject '_' upper(outputName) '.mat'], 'file')
         if ~quiet
-            fprintf('\t !!!%s already found, not overwriting ... \n', upper(outputName))
+            fprintf('\t ⚠ %s already found, not overwriting ... \n', upper(outputName))
         end
         data = [];
         return
@@ -137,7 +129,7 @@ else
     saveData = 'no';
 end
 
-% artefact detection
+%% reject artefact trials
 limFields = fieldnames(lims);
 for i = 1:length(limFields)
     cField = limFields{i};
@@ -153,11 +145,12 @@ subjectdata.nEpochsArtefact = size(artefactdef.sampleinfo, 1);
 
 % dataloss calculation
 if strcmpi(calculateDataloss, 'yes')
-    nBadTrials = sum(sum(sum(out,3)>0) > 0);
+    nBadTrials  = sum(sum(sum(out,3)>0) > 0);
     nGoodTrials = size(out,2) - nBadTrials;
     subjectdata.(dataLossLabel) = (1 - min([nGoodTrials, expectedtrials]) / expectedtrials) * 100;
 end
 
+%% select clean trials
 goodTrialIndx = find(sum(sum(out,3)>0) == 0);
 
 cfg = [];
@@ -175,20 +168,21 @@ end
 cfg = [];
 cfg.trl = data.cfg.trl;
 cfg.trl(:,4) = data.trialinfo;
-trlCount = bv_showTrialAmount(cfg);
+bv_showTrialAmount(cfg);
 
 subjectdata.cleanSampleInfo = artefactdef.sampleinfo(goodTrialIndx,:);
 subjectdata.nCleanEpochsArtefact = length(goodTrialIndx);
 
+%% save
 if strcmpi(saveData, 'yes')
     if ~quiet
-        bv_saveData(subjectdata, data, outputName);             % save both data and subjectdata to the drive
+        bv_saveData(subjectdata, data, outputName);
     else
         evalc('bv_saveData(subjectdata, data, outputName);');
     end
 elseif strcmpi(saveSubjectData, 'yes')
     if ~quiet
-        bv_saveData(subjectdata);                               % save only subjectdata to the drive
+        bv_saveData(subjectdata);
     else
         evalc('bv_saveData(subjectdata);');
     end
