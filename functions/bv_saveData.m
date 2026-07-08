@@ -6,12 +6,8 @@ if nargin > 1
     eval([inputname(2) ' = data;'])
 
     filename = [subjectdata.subjectName '_' outputStr '.mat'];
-    
-%     if contains(outputStr, 'PREPROC')
-%         filePath = [PATHS.PREPROC filesep filename];
-%     else
-        filePath = [subjectdata.PATHS.SUBJECTDIR filesep filename];
-%     end
+
+    filePath = [subjectdata.PATHS.PREPROCDIR filesep filename];
     subjectdata.PATHS.(upper(outputStr)) = filePath;
     
     fprintf('\t saving %s ... ', filePath)
