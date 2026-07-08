@@ -1,6 +1,6 @@
 %% EEG COVID Pipeline
 % This pipeline is meant to preprocess and analyse data from the YOUth
-% Cohort study. It is specifically suited to reproduce a network 
+% Cohort study. It is specifically suited to reproduce a network
 % connectivity analysis.
 
 %% Clear workspace before start
@@ -8,7 +8,7 @@
 restoredefaultpath
 clear all; close all; clc;
 
-%% Create folder structure 
+%% Create folder structure
 
 % Get directory containing the pipeline and its functions
 thisFile = mfilename('fullpath');
@@ -47,3 +47,6 @@ preprocessingData
 
 %% Power estimates
 powerEstimates
+
+%% Network connectivity metrics
+networkMetrics

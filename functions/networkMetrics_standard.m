@@ -1,0 +1,38 @@
+%% Network metrics pipeline
+% Step-by-step script for connectivity and graph-metric calculation.
+% Run after preprocessingData has completed for all subjects.
+
+%% ENSURE NETMET FOLDER EXISTS
+% Subject folders created before the network-metrics feature have no netmet/
+% subfolder or PATHS.NETMETDIR entry. Create and register them here so the
+% steps below always have somewhere to write.
+clear OPTIONS; setOptionsNetmet; setPaths
+
+[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+for iSubjects = startSubject:endSubject
+    subjectFolderPath = fullfile(PATHS.SUBJECTS, subjectFolderNames{iSubjects});
+
+    [subjectdata, check] = bv_check4data(subjectFolderPath);
+    if ~check
+        continue
+    end
+
+    subjectdata.PATHS.NETMETDIR = fullfile(subjectdata.PATHS.SUBJECTDIR, 'netmet');
+    if ~exist(subjectdata.PATHS.NETMETDIR, 'dir')
+        mkdir(subjectdata.PATHS.NETMETDIR);
+    end
+    save(fullfile(subjectdata.PATHS.SUBJECTDIR, 'Subject.mat'), 'subjectdata');
+end
+
+%% CALCULATE PLI CONNECTIVITY
+clear OPTIONS; setOptionsNetmet
+
+[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+for iSubjects = startSubject:endSubject
+
+    cfg             = OPTIONS.PLICONNECTIVITY;
+    cfg.currSubject = subjectFolderNames{iSubjects};
+    cfg.quiet       = 'no';
+
+    connectivity = bv_calculatePLI(cfg);
+end
