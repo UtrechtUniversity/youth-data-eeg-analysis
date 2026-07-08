@@ -43,3 +43,9 @@ OPTIONS.STRENGTH.spctrmfield   = 'plispctrm';
 OPTIONS.STRENGTH.saveData      = OPTIONS.saveData;
 OPTIONS.STRENGTH.pathsFcn      = OPTIONS.pathsScript;
 OPTIONS.STRENGTH.overwrite     = 'yes';
+
+%% FC strength summary (cross-subject) options
+OPTIONS.STRENGTHSUMMARY.inputName  = OPTIONS.STRENGTH.outputName;  % per-subject metric file
+OPTIONS.STRENGTHSUMMARY.outputName = 'strength_summary';          % base filename in PATHS.SUMMARY
+OPTIONS.STRENGTHSUMMARY.format     = 'both';                      % 'csv' | 'mat' | 'both'
+OPTIONS.STRENGTHSUMMARY.pathsFcn   = OPTIONS.pathsScript;

@@ -49,3 +49,8 @@ for iSubjects = startSubject:endSubject
 
     strength = bv_calculateStrength(cfg);
 end
+
+%% COLLECT FC STRENGTH SUMMARY (cross-subject)
+clear OPTIONS; setOptionsNetmet
+
+bv_collectNetmetSummary(OPTIONS.STRENGTHSUMMARY);
