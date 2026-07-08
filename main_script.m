@@ -44,3 +44,6 @@ edit setOptions
 
 %% Preprocessing
 preprocessingData
+
+%% Power estimates
+powerEstimates

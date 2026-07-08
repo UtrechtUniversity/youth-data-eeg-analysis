@@ -98,7 +98,7 @@ if ~overwrite && exist([PATHS.CURRANALYSIS filesep 'setOptions.m'], 'file')
     setOptionsExist = true(1);
     fprintf('setOptions.m already exists, not overwriting \n')
 else
-    setOptionsExist = copyfile(which('setOptions_covid'), [PATHS.CURRANALYSIS filesep 'setOptions.m']);
+    setOptionsExist = copyfile(which('setOptions_preproc'), [PATHS.CURRANALYSIS filesep 'setOptions.m']);
 
     if setOptionsExist
         fprintf('setOptions.m created \n')
@@ -151,6 +151,32 @@ else
     end
 end
 
+fprintf('\t')
+if ~overwrite && exist([PATHS.CURRANALYSIS filesep 'setOptionsPower.m'], 'file')
+    setPowerOptionsExist = true(1);
+    fprintf('setOptionsPower.m already exists, not overwriting \n')
+else
+    setPowerOptionsExist = copyfile(which('setOptions_power'), [PATHS.CURRANALYSIS filesep 'setOptionsPower.m']);
+    if setPowerOptionsExist
+        fprintf('setOptionsPower.m created \n')
+    else
+        fprintf('setOptionsPower.m creation failed, please check \n')
+    end
+end
+
+fprintf('\t')
+if ~overwrite && exist([PATHS.CURRANALYSIS filesep 'powerEstimates.m'], 'file')
+    powerEstimatesExist = true(1);
+    fprintf('powerEstimates.m already exists, not overwriting \n')
+else
+    [powerEstimatesExist, msg] = copyfile(which('powerEstimates_standard'), [PATHS.CURRANALYSIS filesep 'powerEstimates.m']);
+    if powerEstimatesExist
+        fprintf('powerEstimates.m created \n')
+    else
+        fprintf('powerEstimates.m not created with following warning: \n\t\t %s\n', msg)
+    end
+end
+
 fprintf('create log: \n')
 if ~overwrite && exist([PATHS.CURRANALYSIS filesep 'log.txt'], 'file')
     logExist = true(1);
@@ -161,7 +187,7 @@ else
 end
 
 fprintf('\n')
-if setPathExist && setOptionsExist && preprocessExist && logExist
+if setPathExist && setOptionsExist && preprocessExist && logExist && setPowerOptionsExist && powerEstimatesExist
     fprintf('function finished with no problems !\n')
 else
     warning('Function finished with (several) warnings, please check')

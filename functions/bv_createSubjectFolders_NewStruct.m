@@ -185,7 +185,14 @@ for subjIndex = 1:length(files)
         mkdir(paths2SubjectFolder);
     end
 
+    preprocDir = fullfile(paths2SubjectFolder, 'preproc');
+    powerDir   = fullfile(paths2SubjectFolder, 'power');
+    if ~exist(preprocDir, 'dir'); mkdir(preprocDir); end
+    if ~exist(powerDir, 'dir');   mkdir(powerDir);   end
+
     subjectdata.PATHS.SUBJECTDIR = paths2SubjectFolder;
+    subjectdata.PATHS.PREPROCDIR = preprocDir;
+    subjectdata.PATHS.POWERDIR   = powerDir;
     subjectdata.PATHS.DATAFILE   = dataFile;
     subjectdata.PATHS.HDRFILE    = hdrFile;
     [~, subjectdata.filename, ~] = fileparts(subjectdata.PATHS.DATAFILE);

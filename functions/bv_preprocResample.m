@@ -161,7 +161,7 @@ if ~hasdata % check whether data needs to be loaded from subject.mat file
     
     if ~quiet; disp(currSubject); end
     if strcmpi(overwrite, 'no') & strcmpi(saveData, 'yes') & ...
-            exist([PATHS.SUBJECTS filesep currSubject filesep currSubject '_' upper(outputName) '.mat'])
+            exist(fullfile(PATHS.SUBJECTS, currSubject, 'preproc', [currSubject '_' upper(outputName) '.mat']), 'file')
         if ~quiet
             fprintf('\t !!!%s already found, not overwriting ... \n', upper(outputName))
         end
