@@ -49,3 +49,22 @@ OPTIONS.STRENGTHSUMMARY.inputName  = OPTIONS.STRENGTH.outputName;  % per-subject
 OPTIONS.STRENGTHSUMMARY.outputName = 'strength_summary';          % base filename in PATHS.SUMMARY
 OPTIONS.STRENGTHSUMMARY.format     = 'both';                      % 'csv' | 'mat' | 'both'
 OPTIONS.STRENGTHSUMMARY.pathsFcn   = OPTIONS.pathsScript;
+
+%% Small-world propensity options
+% Requires the Bioinformatics Toolbox (graphallshortestpaths).
+OPTIONS.SWP.inputName     = OPTIONS.PLICONNECTIVITY.outputName;  % PLI connectivity file
+OPTIONS.SWP.outputName    = 'SWP';
+OPTIONS.SWP.conditions    = [129 139];   % processed separately; a pooled pass (label 0) is always added
+OPTIONS.SWP.computeGlobal = 'yes';       % whole-network SWP
+OPTIONS.SWP.computeROI    = 'yes';       % per-ROI SWP (small subgraphs; interpret with caution)
+OPTIONS.SWP.ROI           = ROI;
+OPTIONS.SWP.spctrmfield   = 'plispctrm';
+OPTIONS.SWP.saveData      = OPTIONS.saveData;
+OPTIONS.SWP.pathsFcn      = OPTIONS.pathsScript;
+OPTIONS.SWP.overwrite     = 'yes';
+
+%% SWP summary (cross-subject) options
+OPTIONS.SWPSUMMARY.inputName  = OPTIONS.SWP.outputName;
+OPTIONS.SWPSUMMARY.outputName = 'swp_summary';
+OPTIONS.SWPSUMMARY.format     = 'both';
+OPTIONS.SWPSUMMARY.pathsFcn   = OPTIONS.pathsScript;

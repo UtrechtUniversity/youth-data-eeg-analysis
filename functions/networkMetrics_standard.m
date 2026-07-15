@@ -54,3 +54,21 @@ end
 clear OPTIONS; setOptionsNetmet
 
 bv_collectNetmetSummary(OPTIONS.STRENGTHSUMMARY);
+
+%% CALCULATE SMALL-WORLD PROPENSITY
+clear OPTIONS; setOptionsNetmet
+
+[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+for iSubjects = startSubject:endSubject
+
+    cfg             = OPTIONS.SWP;
+    cfg.currSubject = subjectFolderNames{iSubjects};
+    cfg.quiet       = 'no';
+
+    swp = bv_calculateSWP(cfg);
+end
+
+%% COLLECT SWP SUMMARY (cross-subject)
+clear OPTIONS; setOptionsNetmet
+
+bv_collectNetmetSummary(OPTIONS.SWPSUMMARY);
