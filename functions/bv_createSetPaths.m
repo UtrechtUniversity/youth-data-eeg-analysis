@@ -15,6 +15,7 @@ fprintf(fid, 'PATHS.CONFIG = ''%s''; %% path to config directory\n', [path2root 
 fprintf(fid, 'PATHS.SUMMARY = ''%s''; %% path to summary directory\n', [path2root filesep 'summary']);
 fprintf(fid, 'PATHS.PIPELINE = ''%s''; %% path to pipeline functions\n', [path2home filesep 'functions' filesep]);
 fprintf(fid, 'PATHS.FTPATH = ''%s''; %% path to FieldTrip directory\n', [path2home filesep 'fieldtrip' filesep]);
+fprintf(fid, 'PATHS.TOOLBOXES = ''%s''; %% path to bundled third-party toolboxes\n', [path2home filesep 'toolboxes' filesep]);
 
 fprintf(fid,'\n%% create, if necessary the folders \nif ~exist(PATHS.SUBJECTS, ''dir'')\n\tmkdir(PATHS.SUBJECTS)\nend\n');
 fprintf(fid,'if ~exist(PATHS.REMOVED, ''dir'')\n\tmkdir(PATHS.REMOVED)\nend\n');
@@ -25,6 +26,8 @@ fprintf(fid, '\n%% add fieldtrip and its subfunctions path\n');
 fprintf(fid, 'addpath(PATHS.FTPATH);\n');
 fprintf(fid, 'ft_defaults;\n');
 fprintf(fid, 'addpath(PATHS.PIPELINE);\n');
+fprintf(fid, '\n%% add bundled third-party toolboxes (e.g. Network Community Toolbox)\n');
+fprintf(fid, 'addpath(genpath(PATHS.TOOLBOXES));\n');
 
 if exist([path2root filesep 'setPaths.m'], 'file') == 2
     filecreated = true(1);
@@ -34,4 +37,3 @@ else
 end
 
 fclose(fid);
-
