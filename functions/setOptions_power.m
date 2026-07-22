@@ -29,9 +29,12 @@ ROI.RightParietal = {'T8','CP6','P8','P4'};
 ROI.Occipital     = {'PO3','PO4','O1','Oz','O2','Pz'};
 
 freqBands = struct;
-freqBands.theta = [3 6];    % Hz
-freqBands.alpha = [6 9];    % Hz
-freqBands.total = [1 35];   % Hz, used as denominator for relative power
+freqBands.delta  = [1 3];   % Hz
+freqBands.theta  = [3 5];   % Hz
+freqBands.alpha1 = [5 9];   % Hz
+freqBands.alpha2 = [9 15];  % Hz
+freqBands.alpha  = [5 15];  % Hz
+freqBands.total  = [1 15];  % Hz, used as denominator for relative power
 
 OPTIONS.ROIPOWER.inputName   = 'FREQ';
 OPTIONS.ROIPOWER.outputName  = 'POWER';

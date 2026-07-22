@@ -65,9 +65,10 @@ defaultROI.LeftParietal  = {'T7','CP5','P7','P3'};
 defaultROI.RightParietal = {'T8','CP6','P8','P4'};
 defaultROI.Occipital     = {'PO3','PO4','O1','Oz','O2','Pz'};
 
-defaultBands.theta = [3 6];
-defaultBands.alpha = [6 9];
-defaultBands.total = [1 35];
+defaultBands.delta = [1 3]
+defaultBands.theta = [3 5];
+defaultBands.alpha = [5 15];
+defaultBands.total = [1 15];
 
 %% get options
 currSubject = ft_getopt(cfg, 'currSubject');
