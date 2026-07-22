@@ -27,6 +27,9 @@ function power = bv_extractROIPower(cfg, freq)
 %         relative power). All other fields are treated as named bands.
 %         Each value is a ``[low high]`` vector in Hz. Defaults to
 %         theta [3 6], alpha [6 9], total [1 35].
+%     cfg.calcMethod (str, optional): Whether to store absolute/relative
+%         power as raw values (``'raw'``) or log10 values (``'log10'``).
+%         Defaults to ``'raw'``.
 %     cfg.pathsFcn (str, optional): Paths function filename. Defaults to
 %         ``'setPaths'``.
 %     cfg.optionsFcn (str, optional): Options function filename. Defaults to
@@ -41,9 +44,9 @@ function power = bv_extractROIPower(cfg, freq)
 % Returns:
 %     power (struct): Struct with fields ``table`` (MATLAB table with columns
 %         Subject, Wave, Condition, ROI, plus one ``_abs`` and one ``_rel``
-%         column per named band, and Total), ``freqBands``, ``ROI``, and
-%         ``conditions``. Returns empty (``[]``) if output already exists and
-%         ``cfg.overwrite`` is ``'no'``.
+%         column per named band, and Total), ``freqBands``, ``ROI``,
+%         ``conditions``, and ``calcMethod``. Returns empty (``[]``) if
+%         output already exists and ``cfg.overwrite`` is ``'no'``.
 %
 % Example:
 %     ```matlab
@@ -272,6 +275,7 @@ power.table      = T;
 power.freqBands  = freqBands;
 power.ROI        = ROI;
 power.conditions = conditions;
+power.calcMethod = calcMethod;
 
 %% save data
 if strcmpi(saveData, 'yes')
