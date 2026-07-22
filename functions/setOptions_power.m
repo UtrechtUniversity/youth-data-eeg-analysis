@@ -41,6 +41,7 @@ OPTIONS.ROIPOWER.outputName  = 'POWER';
 OPTIONS.ROIPOWER.conditions  = [129 139];   % condition codes; set [] to pool all trials
 OPTIONS.ROIPOWER.ROI         = ROI;
 OPTIONS.ROIPOWER.freqBands   = freqBands;
+OPTIONS.ROIPOWER.calcMethod  = 'raw';       % 'raw' or 'log10' for which to calculate and save
 OPTIONS.ROIPOWER.saveData    = OPTIONS.saveData;
 OPTIONS.ROIPOWER.pathsFcn    = OPTIONS.pathsScript;
 OPTIONS.ROIPOWER.overwrite   = 'yes';

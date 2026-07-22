@@ -78,6 +78,7 @@ outputName  = ft_getopt(cfg, 'outputName');
 conditions  = ft_getopt(cfg, 'conditions', []);
 ROI         = ft_getopt(cfg, 'ROI', defaultROI);
 freqBands   = ft_getopt(cfg, 'freqBands', defaultBands);
+calcMethod  = ft_getopt(cfg, 'calcMethod', 'raw');
 pathsFcn    = ft_getopt(cfg, 'pathsFcn', 'setPaths');
 optionsFcn  = ft_getopt(cfg, 'optionsFcn', 'setOptionsPower');
 overwrite   = ft_getopt(cfg, 'overwrite', 'no');
@@ -228,8 +229,15 @@ for c = 1:length(condList)
             brng    = freqBands.(bname);
             bidx    = find(freq.freq >= brng(1) & freq.freq < brng(2));
             bpow    = mean(roi_pow(:, :, bidx), 'all');
-            row_abs(b) = log10(bpow + eps_val);
-            row_rel(b) = log10(bpow + eps_val) - log10(total_roi + eps_val);
+            if strcmpi(calcMethod, 'log10')
+                row_abs(b) = log10(bpow + eps_val);
+                row_rel(b) = log10(bpow + eps_val) - log10(total_roi + eps_val); % eps guards against log10(0) = -Inf
+            elseif strcmpi(calcMethod, 'raw')
+                row_abs(b) = bpow;
+                row_rel(b) = bpow / (total_roi + eps_val); % eps guards against division by 0
+            else
+                error("calcMethod must be 'raw' or 'log10'");
+            end
         end
 
         Subject{end+1,1}   = subjName;   %#ok<AGROW>
@@ -238,7 +246,12 @@ for c = 1:length(condList)
         ROIcol{end+1,1}    = roi_name;   %#ok<AGROW>
         abs_vals(end+1,:)  = row_abs;    %#ok<AGROW>
         rel_vals(end+1,:)  = row_rel;    %#ok<AGROW>
-        Total(end+1,1)     = log10(total_roi + eps_val); %#ok<AGROW>
+        if strcmpi(calcMethod, 'log10')
+            Total(end+1,1) = log10(total_roi + eps_val);    %#ok<AGROW>
+        else % 'raw'
+            Total(end+1,1) = total_roi;    %#ok<AGROW>
+        end
+
     end
 end
 
