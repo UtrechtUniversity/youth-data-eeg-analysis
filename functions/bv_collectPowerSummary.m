@@ -34,7 +34,8 @@ eval(pathsFcn)
 
 [~, ~, subjectFolderNames] = bv_getSubjectRange(1, 'end');
 
-allTables = {};
+allTables  = {};
+calcMethods = {};
 
 for iSubject = 1:length(subjectFolderNames)
     currSubject       = subjectFolderNames{iSubject};
@@ -54,11 +55,19 @@ for iSubject = 1:length(subjectFolderNames)
     if isfield(power, 'table') && ~isempty(power.table)
         allTables{end+1} = power.table; %#ok<AGROW>
     end
+
+    if isfield(power, 'calcMethod')
+        calcMethods{end+1} = power.calcMethod; %#ok<AGROW>
+    end
 end
 
 if isempty(allTables)
     warning('bv_collectPowerSummary: no POWER data found for any subject')
     return
+end
+
+if numel(unique(calcMethods)) > 1
+    warning('bv_collectPowerSummary: subjects were processed with different calcMethod values (%s); summary mixes these', strjoin(unique(calcMethods), ', '))
 end
 
 T = vertcat(allTables{:});

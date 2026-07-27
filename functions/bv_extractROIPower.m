@@ -27,6 +27,9 @@ function power = bv_extractROIPower(cfg, freq)
 %         relative power). All other fields are treated as named bands.
 %         Each value is a ``[low high]`` vector in Hz. Defaults to
 %         theta [3 6], alpha [6 9], total [1 35].
+%     cfg.calcMethod (str, optional): Whether to store absolute/relative
+%         power as raw values (``'raw'``) or log10 values (``'log10'``).
+%         Defaults to ``'raw'``.
 %     cfg.pathsFcn (str, optional): Paths function filename. Defaults to
 %         ``'setPaths'``.
 %     cfg.optionsFcn (str, optional): Options function filename. Defaults to
@@ -41,9 +44,9 @@ function power = bv_extractROIPower(cfg, freq)
 % Returns:
 %     power (struct): Struct with fields ``table`` (MATLAB table with columns
 %         Subject, Wave, Condition, ROI, plus one ``_abs`` and one ``_rel``
-%         column per named band, and Total), ``freqBands``, ``ROI``, and
-%         ``conditions``. Returns empty (``[]``) if output already exists and
-%         ``cfg.overwrite`` is ``'no'``.
+%         column per named band, and Total), ``freqBands``, ``ROI``,
+%         ``conditions``, and ``calcMethod``. Returns empty (``[]``) if
+%         output already exists and ``cfg.overwrite`` is ``'no'``.
 %
 % Example:
 %     ```matlab
@@ -65,9 +68,10 @@ defaultROI.LeftParietal  = {'T7','CP5','P7','P3'};
 defaultROI.RightParietal = {'T8','CP6','P8','P4'};
 defaultROI.Occipital     = {'PO3','PO4','O1','Oz','O2','Pz'};
 
-defaultBands.theta = [3 6];
-defaultBands.alpha = [6 9];
-defaultBands.total = [1 35];
+defaultBands.delta = [1 3]
+defaultBands.theta = [3 5];
+defaultBands.alpha = [5 15];
+defaultBands.total = [1 15];
 
 %% get options
 currSubject = ft_getopt(cfg, 'currSubject');
@@ -77,6 +81,7 @@ outputName  = ft_getopt(cfg, 'outputName');
 conditions  = ft_getopt(cfg, 'conditions', []);
 ROI         = ft_getopt(cfg, 'ROI', defaultROI);
 freqBands   = ft_getopt(cfg, 'freqBands', defaultBands);
+calcMethod  = ft_getopt(cfg, 'calcMethod', 'raw');
 pathsFcn    = ft_getopt(cfg, 'pathsFcn', 'setPaths');
 optionsFcn  = ft_getopt(cfg, 'optionsFcn', 'setOptionsPower');
 overwrite   = ft_getopt(cfg, 'overwrite', 'no');
@@ -227,8 +232,15 @@ for c = 1:length(condList)
             brng    = freqBands.(bname);
             bidx    = find(freq.freq >= brng(1) & freq.freq < brng(2));
             bpow    = mean(roi_pow(:, :, bidx), 'all');
-            row_abs(b) = log10(bpow + eps_val);
-            row_rel(b) = log10(bpow + eps_val) - log10(total_roi + eps_val);
+            if strcmpi(calcMethod, 'log10')
+                row_abs(b) = log10(bpow + eps_val);
+                row_rel(b) = log10(bpow + eps_val) - log10(total_roi + eps_val); % eps guards against log10(0) = -Inf
+            elseif strcmpi(calcMethod, 'raw')
+                row_abs(b) = bpow;
+                row_rel(b) = bpow / (total_roi + eps_val); % eps guards against division by 0
+            else
+                error("calcMethod must be 'raw' or 'log10'");
+            end
         end
 
         Subject{end+1,1}   = subjName;   %#ok<AGROW>
@@ -237,7 +249,12 @@ for c = 1:length(condList)
         ROIcol{end+1,1}    = roi_name;   %#ok<AGROW>
         abs_vals(end+1,:)  = row_abs;    %#ok<AGROW>
         rel_vals(end+1,:)  = row_rel;    %#ok<AGROW>
-        Total(end+1,1)     = log10(total_roi + eps_val); %#ok<AGROW>
+        if strcmpi(calcMethod, 'log10')
+            Total(end+1,1) = log10(total_roi + eps_val);    %#ok<AGROW>
+        else % 'raw'
+            Total(end+1,1) = total_roi;    %#ok<AGROW>
+        end
+
     end
 end
 
@@ -258,6 +275,7 @@ power.table      = T;
 power.freqBands  = freqBands;
 power.ROI        = ROI;
 power.conditions = conditions;
+power.calcMethod = calcMethod;
 
 %% save data
 if strcmpi(saveData, 'yes')
