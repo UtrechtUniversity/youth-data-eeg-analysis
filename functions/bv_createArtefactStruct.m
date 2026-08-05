@@ -146,50 +146,65 @@ else
     overwrite = 'no';
 end
 
-if strcmpi(cutintrials, 'yes')
-    cfg = [];
-    cfg.length = triallength;
-    cfg.overlap = 0;
-    evalc('data = ft_redefinetrial(cfg, data);');
+hasSubject = ~isempty(currSubject);
+
+try
+    if strcmpi(cutintrials, 'yes')
+        cfg = [];
+        cfg.length = triallength;
+        cfg.overlap = 0;
+        evalc('data = ft_redefinetrial(cfg, data);');
+    end
+
+    if ~quiet; fprintf('\t calculating artefact levels ... '); end
+    for i = 1:length(data.trial)
+        if contains('kurtosis', analyses)
+            artefactdef.kurtosis.levels(:,i) = kurtosis(data.trial{i}, [], 2);
+        end
+        if contains('variance', analyses)
+            artefactdef.variance.levels(:,i) = std(data.trial{i}, [], 2).^2;
+        end
+        if contains('flatline', analyses)
+            artefactdef.flatline.levels(:,i) = 1./(abs(max(data.trial{i},[],2) - min(data.trial{i},[],2)));
+        end
+        if contains('range', analyses)
+            artefactdef.range.levels(:,i) = max(data.trial{i}, [], 2) - min(data.trial{i}, [], 2);
+        end
+        if contains('abs', analyses)
+            artefactdef.abs.levels(:,i) = max(abs(data.trial{i}), [],2);
+        end
+    end
+
+    % if contains('jump', analyses)
+    %     artefactdef.jump.levels = zeros(length(data.label), length(data.trial));
+    %     counter = 0;
+    %     for i = 1:length(data.label)
+    %         cfg = [];
+    %         cfg.artfctdef.jump.channel = data.label{i};
+    %         cfg.continuous = 'no';
+    %         [tmp,artifact] = ft_artifact_jump(cfg, data);
+    %         for j = 1:size(artifact,1)
+    %             counter = counter + 1;
+    %             [~,sel] = min(abs(mean(data.sampleinfo(:,1:2),2) - mean(artifact(j,:))));
+    %             artefactdef.jump.levels(i,sel) = 1;
+    %         end
+    %     end
+    % end
+    if ~quiet; fprintf('done! \n'); end
+
+    artefactdef.sampleinfo = data.sampleinfo;
+catch ME
+    if hasSubject
+        if ~quiet; fprintf('\n \t \t error while calculating artefact levels, removing subject and continuing ... \n'); end
+        removingSubjectsCfg = [];
+        removingSubjectsCfg.pathsFcn = pathsFcn;
+        removingSubjects(removingSubjectsCfg, currSubject, ['artefact calculation - ' ME.message])
+        artefactdef = [];
+        return
+    else
+        rethrow(ME)
+    end
 end
-
-if ~quiet; fprintf('\t calculating artefact levels ... '); end
-for i = 1:length(data.trial)
-    if contains('kurtosis', analyses)
-        artefactdef.kurtosis.levels(:,i) = kurtosis(data.trial{i}, [], 2);
-    end
-    if contains('variance', analyses)
-        artefactdef.variance.levels(:,i) = std(data.trial{i}, [], 2).^2;
-    end
-    if contains('flatline', analyses)
-        artefactdef.flatline.levels(:,i) = 1./(abs(max(data.trial{i},[],2) - min(data.trial{i},[],2)));
-    end
-    if contains('range', analyses)
-        artefactdef.range.levels(:,i) = max(data.trial{i}, [], 2) - min(data.trial{i}, [], 2);
-    end
-    if contains('abs', analyses)
-        artefactdef.abs.levels(:,i) = max(abs(data.trial{i}), [],2);
-    end
-end
-
-% if contains('jump', analyses)
-%     artefactdef.jump.levels = zeros(length(data.label), length(data.trial));
-%     counter = 0;
-%     for i = 1:length(data.label)
-%         cfg = [];
-%         cfg.artfctdef.jump.channel = data.label{i};
-%         cfg.continuous = 'no';
-%         [tmp,artifact] = ft_artifact_jump(cfg, data);
-%         for j = 1:size(artifact,1)
-%             counter = counter + 1;
-%             [~,sel] = min(abs(mean(data.sampleinfo(:,1:2),2) - mean(artifact(j,:))));
-%             artefactdef.jump.levels(i,sel) = 1;
-%         end
-%     end
-% end
-if ~quiet; fprintf('done! \n'); end
-
-artefactdef.sampleinfo = data.sampleinfo;
 
 if strcmpi(saveData, 'yes')
     
