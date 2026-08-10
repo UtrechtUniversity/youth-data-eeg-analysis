@@ -72,3 +72,21 @@ end
 clear OPTIONS; setOptionsNetmet
 
 bv_collectNetmetSummary(OPTIONS.SWPSUMMARY);
+
+%% CALCULATE Q MODULARITY
+clear OPTIONS; setOptionsNetmet
+
+[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+for iSubjects = startSubject:endSubject
+
+    cfg             = OPTIONS.QMOD;
+    cfg.currSubject = subjectFolderNames{iSubjects};
+    cfg.quiet       = 'no';
+
+    qmod = gr_calculateQModularity(cfg);
+end
+
+%% COLLECT Q MODULARITY SUMMARY (cross-subject)
+clear OPTIONS; setOptionsNetmet
+
+bv_collectNetmetSummary(OPTIONS.QMODSUMMARY);

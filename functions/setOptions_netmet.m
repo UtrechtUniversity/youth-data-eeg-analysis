@@ -70,3 +70,25 @@ OPTIONS.SWPSUMMARY.inputName  = OPTIONS.SWP.outputName;
 OPTIONS.SWPSUMMARY.outputName = 'swp_summary';
 OPTIONS.SWPSUMMARY.format     = 'both'; % 'csv' | 'mat' | 'both'
 OPTIONS.SWPSUMMARY.pathsFcn   = OPTIONS.pathsScript;
+
+%% Q modularity options
+% Requires FieldTrip's bundled Brain Connectivity Toolbox (community_louvain).
+OPTIONS.QMOD.inputName       = OPTIONS.PLICONNECTIVITY.outputName;  % PLI connectivity file
+OPTIONS.QMOD.outputName      = 'QMOD';
+OPTIONS.QMOD.conditions      = [129 139];   % processed separately; a pooled pass (always labelled 'Global') is always added
+OPTIONS.QMOD.conditionLabels = {'NonSocial', 'Social'};  % positionally matched to conditions
+OPTIONS.QMOD.computeGlobal   = 'yes';       % whole-network modularity
+OPTIONS.QMOD.computeROI      = 'yes';       % per-ROI modularity (small subgraphs; interpret with caution)
+OPTIONS.QMOD.ROI             = ROI;
+OPTIONS.QMOD.edgeType        = 'weighted';
+OPTIONS.QMOD.gamma           = 1;
+OPTIONS.QMOD.spctrmfield     = 'plispctrm';
+OPTIONS.QMOD.saveData        = OPTIONS.saveData;
+OPTIONS.QMOD.pathsFcn        = OPTIONS.pathsScript;
+OPTIONS.QMOD.overwrite       = 'yes';
+
+%% Q modularity summary (cross-subject) options
+OPTIONS.QMODSUMMARY.inputName  = OPTIONS.QMOD.outputName;
+OPTIONS.QMODSUMMARY.outputName = 'qmod_summary';
+OPTIONS.QMODSUMMARY.format     = 'both'; % 'csv' | 'mat' | 'both'
+OPTIONS.QMODSUMMARY.pathsFcn   = OPTIONS.pathsScript;
