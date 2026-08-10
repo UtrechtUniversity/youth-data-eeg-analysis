@@ -126,3 +126,21 @@ end
 clear OPTIONS; setOptionsNetmet
 
 bv_collectNetmetSummary(OPTIONS.PATHLENGTHSUMMARY);
+
+%% CALCULATE BETWEENNESS CENTRALITY
+clear OPTIONS; setOptionsNetmet
+
+[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+for iSubjects = startSubject:endSubject
+
+    cfg             = OPTIONS.BC;
+    cfg.currSubject = subjectFolderNames{iSubjects};
+    cfg.quiet       = 'no';
+
+    bc = gr_calculateBetweennessCentrality(cfg);
+end
+
+%% COLLECT BETWEENNESS CENTRALITY SUMMARY (cross-subject)
+clear OPTIONS; setOptionsNetmet
+
+bv_collectNetmetSummary(OPTIONS.BCSUMMARY);

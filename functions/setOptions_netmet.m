@@ -135,3 +135,24 @@ OPTIONS.PATHLENGTHSUMMARY.inputName  = OPTIONS.PATHLENGTH.outputName;
 OPTIONS.PATHLENGTHSUMMARY.outputName = 'pathlength_summary';
 OPTIONS.PATHLENGTHSUMMARY.format     = 'both'; % 'csv' | 'mat' | 'both'
 OPTIONS.PATHLENGTHSUMMARY.pathsFcn   = OPTIONS.pathsScript;
+
+%% Betweenness centrality options
+% Uses FieldTrip's bundled Brain Connectivity Toolbox (betweenness_bin/wei).
+OPTIONS.BC.inputName       = OPTIONS.PLICONNECTIVITY.outputName;  % PLI connectivity file
+OPTIONS.BC.outputName      = 'BC';
+OPTIONS.BC.conditions      = [129 139];   % processed separately; a pooled pass (always labelled 'Global') is always added
+OPTIONS.BC.conditionLabels = {'NonSocial', 'Social'};  % positionally matched to conditions
+OPTIONS.BC.computeGlobal   = 'yes';       % whole-network betweenness centrality
+OPTIONS.BC.computeROI      = 'yes';       % per-ROI betweenness centrality (small subgraphs; interpret with caution)
+OPTIONS.BC.ROI             = ROI;
+OPTIONS.BC.edgeType        = 'weighted';
+OPTIONS.BC.spctrmfield     = 'plispctrm';
+OPTIONS.BC.saveData        = OPTIONS.saveData;
+OPTIONS.BC.pathsFcn        = OPTIONS.pathsScript;
+OPTIONS.BC.overwrite       = 'yes';
+
+%% Betweenness centrality summary (cross-subject) options
+OPTIONS.BCSUMMARY.inputName  = OPTIONS.BC.outputName;
+OPTIONS.BCSUMMARY.outputName = 'bc_summary';
+OPTIONS.BCSUMMARY.format     = 'both'; % 'csv' | 'mat' | 'both'
+OPTIONS.BCSUMMARY.pathsFcn   = OPTIONS.pathsScript;
