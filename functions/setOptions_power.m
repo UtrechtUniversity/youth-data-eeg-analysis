@@ -6,8 +6,52 @@
 OPTIONS.saveData    = 'yes';
 OPTIONS.pathsScript = 'setPaths';
 
+%% Epoch preprocessed data into sliding windows for power estimation
+% NOTE: input is APPEND, not CLEANED. CLEANED trials are only
+% OPTIONS.artifacttrllength (1s) long each - bv_cleanData rebuilds trials
+% directly from the artefact struct's per-second sampleinfo, it doesn't
+% keep the original (up to posttrig-length) trialfun epochs. APPEND
+% re-stitches consecutive clean 1s fragments back into longer continuous
+% runs, which is what this sliding-window step actually needs as input.
+OPTIONS.EPOCH.inputName    = 'APPEND';
+OPTIONS.EPOCH.outputName   = 'EPOCHS';
+OPTIONS.EPOCH.triallength  = 3;            % epoch length in seconds
+OPTIONS.EPOCH.overlap      = 2/3;          % fraction overlap -> 1s step
+OPTIONS.EPOCH.saveData     = OPTIONS.saveData;
+OPTIONS.EPOCH.pathsFcn     = OPTIONS.pathsScript;
+OPTIONS.EPOCH.overwrite    = 'yes';
+
+%% Artefact detection on the epoched data
+% Uses the same metrics as the preprocessing artefact steps
+OPTIONS.ARTFCTEPOCH.inputName    = 'EPOCHS';
+OPTIONS.ARTFCTEPOCH.outputName   = 'ARTFCTEPOCHS';
+OPTIONS.ARTFCTEPOCH.saveData     = OPTIONS.saveData;
+OPTIONS.ARTFCTEPOCH.pathsFcn     = OPTIONS.pathsScript;
+OPTIONS.ARTFCTEPOCH.cutintrials  = 'no';   % epochs are already at target length
+OPTIONS.ARTFCTEPOCH.overwrite    = 'yes';
+OPTIONS.ARTFCTEPOCH.analyses     = {'kurtosis','variance', 'flatline', 'abs'};
+
+%% Remove artefact-contaminated epochs
+% NOTE: these limits are intentionally the same as lims in setOptions.m's
+% ARTFCTRMCHANNELS/CLEANED steps (same rejection criteria, now reapplied
+% per 3s epoch instead of per preprocessing trial). Keep them in sync.
+epochLims = struct;
+epochLims.abs      = 250;   % uV
+epochLims.flatline = 0.1;   % 1./std.^2
+epochLims.kurtosis = 10;
+epochLims.variance = 2000;  % std.^2
+
+OPTIONS.CLEANEPOCHS.lims           = epochLims;
+OPTIONS.CLEANEPOCHS.pathsFcn       = OPTIONS.pathsScript;
+OPTIONS.CLEANEPOCHS.inputName      = 'EPOCHS';
+OPTIONS.CLEANEPOCHS.artefactData   = 'ARTFCTEPOCHS';
+OPTIONS.CLEANEPOCHS.outputName     = 'CLEANEPOCHS';
+OPTIONS.CLEANEPOCHS.saveData       = OPTIONS.saveData;
+OPTIONS.CLEANEPOCHS.saveCleanData  = 'yes';
+OPTIONS.CLEANEPOCHS.repairchans    = 'no';
+
 %% Frequency analysis options
-OPTIONS.FREQUENCY.inputName   = 'APPEND';       % input step from preprocessing
+OPTIONS.FREQUENCY.inputName   = 'CLEANEPOCHS';  % input step from power epoching/rejection
 OPTIONS.FREQUENCY.outputName  = 'FREQ';
 OPTIONS.FREQUENCY.method      = 'mtmfft';
 OPTIONS.FREQUENCY.taper       = 'hanning';
