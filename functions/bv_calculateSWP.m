@@ -14,9 +14,11 @@ function swp = bv_calculateSWP(cfg, connectivity)
 % graphs (< 3 nodes / all-zero) yield NaN. Per-matrix failures are caught
 % and yield NaN with a warning so the pipeline does not stop.
 %
-% NOTE: small_world_propensity requires the Bioinformatics Toolbox
-% (graphallshortestpaths). ROI-level SWP is computed on small subgraphs and
-% should be interpreted with caution.
+% NOTE: small_world_propensity uses MATLAB's built-in graph/distances
+% functions (base MATLAB, no toolbox required as of R2022b, when
+% graphallshortestpaths was removed from the Bioinformatics Toolbox).
+% ROI-level SWP is computed on small subgraphs and should be interpreted
+% with caution.
 %
 % Args:
 %     cfg.currSubject (str): Subject folder name. Required when no
@@ -27,8 +29,17 @@ function swp = bv_calculateSWP(cfg, connectivity)
 %         ``subjectdata.PATHS`` entry. Required when saving.
 %     cfg.saveData (str): ``'yes'``/``'no'`` (default ``'no'``).
 %     cfg.conditions (numeric): Condition codes processed separately. A
-%         pooled pass over all epochs (condition label 0) is always added.
-%         Set to ``[]`` for pooled only. Default ``[]``.
+%         pooled pass over all epochs (always labelled 'Global') is always
+%         added. Set to ``[]`` for pooled only. Default ``[]``.
+%     cfg.conditionLabels (cell array of str, optional): Display labels for
+%         cfg.conditions' Condition column, matched *positionally* - the
+%         i-th label is used for cfg.conditions(i), so this must be in the
+%         same order and have the same number of elements as cfg.conditions
+%         (e.g. ``cfg.conditions = [129 139]; cfg.conditionLabels =
+%         {'NonSocial', 'Social'}`` labels 129 as 'NonSocial' and 139 as
+%         'Social'). Codes without a label (or when this is omitted/empty)
+%         fall back to the stringified condition code. The pooled pass is
+%         always labelled 'Global'.
 %     cfg.computeGlobal (str): ``'yes'``/``'no'`` whole-network SWP
 %         (default ``'yes'``).
 %     cfg.computeROI (str): ``'yes'``/``'no'`` per-ROI SWP (default ``'yes'``).
@@ -59,19 +70,20 @@ defaultROI.RightParietal = {'T8','CP6','P8','P4'};
 defaultROI.Occipital     = {'PO3','PO4','O1','Oz','O2','Pz'};
 
 %% get options
-currSubject   = ft_getopt(cfg, 'currSubject');
-inputName     = ft_getopt(cfg, 'inputName');
-saveData      = ft_getopt(cfg, 'saveData', 'no');
-outputName    = ft_getopt(cfg, 'outputName');
-conditions    = ft_getopt(cfg, 'conditions', []);
-computeGlobal = ft_getopt(cfg, 'computeGlobal', 'yes');
-computeROI    = ft_getopt(cfg, 'computeROI', 'yes');
-ROI           = ft_getopt(cfg, 'ROI', defaultROI);
-spctrmfield   = ft_getopt(cfg, 'spctrmfield', 'plispctrm');
-pathsFcn      = ft_getopt(cfg, 'pathsFcn', 'setPaths');
-optionsFcn    = ft_getopt(cfg, 'optionsFcn', 'setOptionsNetmet');
-overwrite     = ft_getopt(cfg, 'overwrite', 'no');
-quiet         = ft_getopt(cfg, 'quiet', 'no');
+currSubject          = ft_getopt(cfg, 'currSubject');
+inputName            = ft_getopt(cfg, 'inputName');
+saveData             = ft_getopt(cfg, 'saveData', 'no');
+outputName           = ft_getopt(cfg, 'outputName');
+conditions           = ft_getopt(cfg, 'conditions', []);
+conditionLabelsList  = ft_getopt(cfg, 'conditionLabels', {});
+computeGlobal        = ft_getopt(cfg, 'computeGlobal', 'yes');
+computeROI           = ft_getopt(cfg, 'computeROI', 'yes');
+ROI                  = ft_getopt(cfg, 'ROI', defaultROI);
+spctrmfield          = ft_getopt(cfg, 'spctrmfield', 'plispctrm');
+pathsFcn             = ft_getopt(cfg, 'pathsFcn', 'setPaths');
+optionsFcn           = ft_getopt(cfg, 'optionsFcn', 'setOptionsNetmet');
+overwrite            = ft_getopt(cfg, 'overwrite', 'no');
+quiet                = ft_getopt(cfg, 'quiet', 'no');
 
 quiet         = strcmpi(quiet, 'yes');
 computeGlobal = strcmpi(computeGlobal, 'yes');
@@ -79,6 +91,16 @@ computeROI    = strcmpi(computeROI, 'yes');
 
 if ~computeGlobal && ~computeROI
     error('bv_calculateSWP: both computeGlobal and computeROI are off; nothing to compute')
+end
+
+if ~isempty(conditionLabelsList) && length(conditionLabelsList) ~= length(conditions)
+    error(['bv_calculateSWP: cfg.conditionLabels must have the same number of ' ...
+        'elements as cfg.conditions (one label per condition code, in the same order)'])
+end
+
+conditionLabels = containers.Map('KeyType', 'double', 'ValueType', 'any');
+for i = 1:length(conditionLabelsList)
+    conditionLabels(conditions(i)) = conditionLabelsList{i};
 end
 
 %% load data (if necessary)
@@ -169,12 +191,15 @@ if computeROI
     end
 end
 
-%% build condition list: each condition separately, plus a pooled pass (label 0)
+%% build condition list: each condition separately, plus a pooled pass (labelled 'Global')
 if isempty(conditions)
     condList = {[]};
 else
     condList = [num2cell(conditions), {[]}];
 end
+
+%% helper: resolve a display label for a condition code
+resolveLabel = @(code) bv_resolveConditionLabel(code, conditionLabels);
 
 %% compute SWP per condition x region x band
 Subject   = {};
@@ -190,11 +215,11 @@ for c = 1:numel(condList)
 
     if isempty(cond)
         sel       = true(size(trialinfo));
-        condLabel = 0;
+        condLabel = 'Global';
     else
         sel = (trialinfo == cond);
         if ~any(sel); continue; end
-        condLabel = cond;
+        condLabel = resolveLabel(cond);
     end
 
     % average connectivity over the selected epochs -> chan x chan x freq
@@ -227,7 +252,7 @@ for c = 1:numel(condList)
                 end
             catch ME
                 warning('bv_calculateSWP:%s %s/%s band %s: %s', ...
-                    subjName, regionNames{r}, num2str(condLabel), bands{b}, ME.message);
+                    subjName, regionNames{r}, condLabel, bands{b}, ME.message);
             end
         end
 

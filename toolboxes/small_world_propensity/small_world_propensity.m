@@ -4,8 +4,8 @@ function [SWP,delta_C,delta_L] = small_world_propensity(A, varargin)
 % a given network - assumes that matrix is undirected (symmeteric) and if
 % not, creates a symmetric matrix which is used for the calculations
 
-%NOTE:  This code requires the Bioinformatics Toolbox to be installed
-%        (uses graphallshortestpaths.m)
+%NOTE:  Uses MATLAB's built-in graph/distances functions (base MATLAB,
+%        no toolbox required)
 
 %Inputs:
 %   A           the connectivity matrix, weighted or binary
@@ -145,13 +145,18 @@ end
 function [Len] = avg_path_matrix(M)
 
 %a function to compute the average path length of a given matrix
-%using the graphallshortestpaths built-in matlab function
+%using MATLAB's graph/distances functions.
+%
+%NOTE: originally used the Bioinformatics Toolbox's graphallshortestpaths,
+%which MathWorks removed in R2022b (recommending distances() as the
+%replacement). graph/distances are part of base MATLAB (since R2015b), so
+%this no longer requires the Bioinformatics Toolbox.
 
-%written by Eric Bridgeford
+%written by Eric Bridgeford, updated for R2022b+ removal of graphallshortestpaths
 
 n = length(M);
-M = sparse(M);
-D = graphallshortestpaths(M);
+G = graph(sparse(M), 'omitselfloops');
+D = distances(G);
 
 %checks if a node is disconnected from the system, and replaces
 %its value with 0

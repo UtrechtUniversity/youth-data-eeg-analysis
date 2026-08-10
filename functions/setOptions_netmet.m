@@ -33,38 +33,40 @@ ROI.RightParietal = {'T8','CP6','P8','P4'};
 ROI.Occipital     = {'PO3','PO4','O1','Oz','O2','Pz'};
 
 %% FC strength options
-OPTIONS.STRENGTH.inputName     = OPTIONS.PLICONNECTIVITY.outputName;  % PLI connectivity file
-OPTIONS.STRENGTH.outputName    = 'STRENGTH';
-OPTIONS.STRENGTH.conditions    = [129 139];   % processed separately; a pooled pass (label 0) is always added
-OPTIONS.STRENGTH.computeGlobal = 'yes';       % whole-network strength
-OPTIONS.STRENGTH.computeROI    = 'yes';       % per-ROI strength
-OPTIONS.STRENGTH.ROI           = ROI;
-OPTIONS.STRENGTH.spctrmfield   = 'plispctrm';
-OPTIONS.STRENGTH.saveData      = OPTIONS.saveData;
-OPTIONS.STRENGTH.pathsFcn      = OPTIONS.pathsScript;
-OPTIONS.STRENGTH.overwrite     = 'yes';
+OPTIONS.STRENGTH.inputName       = OPTIONS.PLICONNECTIVITY.outputName;  % PLI connectivity file
+OPTIONS.STRENGTH.outputName      = 'STRENGTH';
+OPTIONS.STRENGTH.conditions      = [129 139];   % processed separately; a pooled pass (always labelled 'Global') is always added
+OPTIONS.STRENGTH.conditionLabels = {'NonSocial', 'Social'};  % positionally matched to conditions
+OPTIONS.STRENGTH.computeGlobal   = 'yes';       % whole-network strength
+OPTIONS.STRENGTH.computeROI      = 'yes';       % per-ROI strength
+OPTIONS.STRENGTH.ROI             = ROI;
+OPTIONS.STRENGTH.spctrmfield     = 'plispctrm';
+OPTIONS.STRENGTH.saveData        = OPTIONS.saveData;
+OPTIONS.STRENGTH.pathsFcn        = OPTIONS.pathsScript;
+OPTIONS.STRENGTH.overwrite       = 'yes';
 
 %% FC strength summary (cross-subject) options
 OPTIONS.STRENGTHSUMMARY.inputName  = OPTIONS.STRENGTH.outputName;  % per-subject metric file
-OPTIONS.STRENGTHSUMMARY.outputName = 'strength_summary';          % base filename in PATHS.SUMMARY
-OPTIONS.STRENGTHSUMMARY.format     = 'both';                      % 'csv' | 'mat' | 'both'
+OPTIONS.STRENGTHSUMMARY.outputName = 'strength_summary';           % base filename in PATHS.SUMMARY
+OPTIONS.STRENGTHSUMMARY.format     = 'both';                       % 'csv' | 'mat' | 'both'
 OPTIONS.STRENGTHSUMMARY.pathsFcn   = OPTIONS.pathsScript;
 
 %% Small-world propensity options
-% Requires the Bioinformatics Toolbox (graphallshortestpaths).
-OPTIONS.SWP.inputName     = OPTIONS.PLICONNECTIVITY.outputName;  % PLI connectivity file
-OPTIONS.SWP.outputName    = 'SWP';
-OPTIONS.SWP.conditions    = [129 139];   % processed separately; a pooled pass (label 0) is always added
-OPTIONS.SWP.computeGlobal = 'yes';       % whole-network SWP
-OPTIONS.SWP.computeROI    = 'yes';       % per-ROI SWP (small subgraphs; interpret with caution)
-OPTIONS.SWP.ROI           = ROI;
-OPTIONS.SWP.spctrmfield   = 'plispctrm';
-OPTIONS.SWP.saveData      = OPTIONS.saveData;
-OPTIONS.SWP.pathsFcn      = OPTIONS.pathsScript;
-OPTIONS.SWP.overwrite     = 'yes';
+% Uses MATLAB's built-in graph/distances functions; no toolbox required.
+OPTIONS.SWP.inputName       = OPTIONS.PLICONNECTIVITY.outputName;  % PLI connectivity file
+OPTIONS.SWP.outputName      = 'SWP';
+OPTIONS.SWP.conditions      = [129 139];   % processed separately; a pooled pass (always labelled 'Global') is always added
+OPTIONS.SWP.conditionLabels = {'NonSocial', 'Social'};  % positionally matched to conditions
+OPTIONS.SWP.computeGlobal   = 'yes';       % whole-network SWP
+OPTIONS.SWP.computeROI      = 'yes';       % per-ROI SWP (small subgraphs; interpret with caution)
+OPTIONS.SWP.ROI             = ROI;
+OPTIONS.SWP.spctrmfield     = 'plispctrm';
+OPTIONS.SWP.saveData        = OPTIONS.saveData;
+OPTIONS.SWP.pathsFcn        = OPTIONS.pathsScript;
+OPTIONS.SWP.overwrite       = 'yes';
 
 %% SWP summary (cross-subject) options
 OPTIONS.SWPSUMMARY.inputName  = OPTIONS.SWP.outputName;
 OPTIONS.SWPSUMMARY.outputName = 'swp_summary';
-OPTIONS.SWPSUMMARY.format     = 'both';
+OPTIONS.SWPSUMMARY.format     = 'both'; % 'csv' | 'mat' | 'both'
 OPTIONS.SWPSUMMARY.pathsFcn   = OPTIONS.pathsScript;
