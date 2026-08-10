@@ -92,3 +92,24 @@ OPTIONS.QMODSUMMARY.inputName  = OPTIONS.QMOD.outputName;
 OPTIONS.QMODSUMMARY.outputName = 'qmod_summary';
 OPTIONS.QMODSUMMARY.format     = 'both'; % 'csv' | 'mat' | 'both'
 OPTIONS.QMODSUMMARY.pathsFcn   = OPTIONS.pathsScript;
+
+%% Clustering coefficient options
+% Uses FieldTrip's bundled Brain Connectivity Toolbox (clustering_coef_bu/wu).
+OPTIONS.CLUSTERING.inputName       = OPTIONS.PLICONNECTIVITY.outputName;  % PLI connectivity file
+OPTIONS.CLUSTERING.outputName      = 'CLUSTERING';
+OPTIONS.CLUSTERING.conditions      = [129 139];   % processed separately; a pooled pass (always labelled 'Global') is always added
+OPTIONS.CLUSTERING.conditionLabels = {'NonSocial', 'Social'};  % positionally matched to conditions
+OPTIONS.CLUSTERING.computeGlobal   = 'yes';       % whole-network clustering
+OPTIONS.CLUSTERING.computeROI      = 'yes';       % per-ROI clustering (small subgraphs; interpret with caution)
+OPTIONS.CLUSTERING.ROI             = ROI;
+OPTIONS.CLUSTERING.edgeType        = 'weighted';
+OPTIONS.CLUSTERING.spctrmfield     = 'plispctrm';
+OPTIONS.CLUSTERING.saveData        = OPTIONS.saveData;
+OPTIONS.CLUSTERING.pathsFcn        = OPTIONS.pathsScript;
+OPTIONS.CLUSTERING.overwrite       = 'yes';
+
+%% Clustering summary (cross-subject) options
+OPTIONS.CLUSTERINGSUMMARY.inputName  = OPTIONS.CLUSTERING.outputName;
+OPTIONS.CLUSTERINGSUMMARY.outputName = 'clustering_summary';
+OPTIONS.CLUSTERINGSUMMARY.format     = 'both'; % 'csv' | 'mat' | 'both'
+OPTIONS.CLUSTERINGSUMMARY.pathsFcn   = OPTIONS.pathsScript;

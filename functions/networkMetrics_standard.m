@@ -90,3 +90,21 @@ end
 clear OPTIONS; setOptionsNetmet
 
 bv_collectNetmetSummary(OPTIONS.QMODSUMMARY);
+
+%% CALCULATE CLUSTERING COEFFICIENT
+clear OPTIONS; setOptionsNetmet
+
+[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+for iSubjects = startSubject:endSubject
+
+    cfg             = OPTIONS.CLUSTERING;
+    cfg.currSubject = subjectFolderNames{iSubjects};
+    cfg.quiet       = 'no';
+
+    clus = gr_calculateClusteringWs(cfg);
+end
+
+%% COLLECT CLUSTERING SUMMARY (cross-subject)
+clear OPTIONS; setOptionsNetmet
+
+bv_collectNetmetSummary(OPTIONS.CLUSTERINGSUMMARY);
