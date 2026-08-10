@@ -80,19 +80,20 @@ freqBands.theta       = [4 7];   % Hz
 freqBands.alpha       = [8 12];  % Hz
 freqBands.beta        = [13 25]; % Hz
 freqBands.gamma       = [26 35]; % Hz
-freqBands.infantTheta = [3 6]    % Hz
-freqBands.infantAlpha = [6 9]    % Hz
+freqBands.infantTheta = [3 6];   % Hz
+freqBands.infantAlpha = [6 9];   % Hz
 freqBands.total       = [1 35];  % Hz, used as denominator for relative power
 
-OPTIONS.ROIPOWER.inputName   = 'FREQ';
-OPTIONS.ROIPOWER.outputName  = 'POWER';
-OPTIONS.ROIPOWER.conditions  = [129 139];   % condition codes; set [] to pool all trials
-OPTIONS.ROIPOWER.ROI         = ROI;
-OPTIONS.ROIPOWER.freqBands   = freqBands;
-OPTIONS.ROIPOWER.calcMethod  = 'raw';       % 'raw' or 'log10' for which to calculate and save
-OPTIONS.ROIPOWER.saveData    = OPTIONS.saveData;
-OPTIONS.ROIPOWER.pathsFcn    = OPTIONS.pathsScript;
-OPTIONS.ROIPOWER.overwrite   = 'yes';
+OPTIONS.ROIPOWER.inputName       = 'FREQ';
+OPTIONS.ROIPOWER.outputName      = 'POWER';
+OPTIONS.ROIPOWER.conditions      = [129 139];   % condition codes; set [] to skip the per-condition breakdown
+OPTIONS.ROIPOWER.conditionLabels = {'NonSocial', 'Social'};
+OPTIONS.ROIPOWER.ROI             = ROI;
+OPTIONS.ROIPOWER.freqBands       = freqBands;
+OPTIONS.ROIPOWER.calcMethod      = 'raw';       % 'raw' or 'log10' for which to calculate and save
+OPTIONS.ROIPOWER.saveData        = OPTIONS.saveData;
+OPTIONS.ROIPOWER.pathsFcn        = OPTIONS.pathsScript;
+OPTIONS.ROIPOWER.overwrite       = 'yes';
 
 %% Power summary collection options
 OPTIONS.POWERSUMMARY.inputName  = 'POWER';
