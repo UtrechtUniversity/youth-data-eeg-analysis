@@ -113,3 +113,25 @@ OPTIONS.CLUSTERINGSUMMARY.inputName  = OPTIONS.CLUSTERING.outputName;
 OPTIONS.CLUSTERINGSUMMARY.outputName = 'clustering_summary';
 OPTIONS.CLUSTERINGSUMMARY.format     = 'both'; % 'csv' | 'mat' | 'both'
 OPTIONS.CLUSTERINGSUMMARY.pathsFcn   = OPTIONS.pathsScript;
+
+%% Path length options
+% Uses FieldTrip's bundled Brain Connectivity Toolbox (distance_bin/wei, charpath).
+OPTIONS.PATHLENGTH.inputName       = OPTIONS.PLICONNECTIVITY.outputName;  % PLI connectivity file
+OPTIONS.PATHLENGTH.outputName      = 'PATHLENGTH';
+OPTIONS.PATHLENGTH.conditions      = [129 139];   % processed separately; a pooled pass (always labelled 'Global') is always added
+OPTIONS.PATHLENGTH.conditionLabels = {'NonSocial', 'Social'};  % positionally matched to conditions
+OPTIONS.PATHLENGTH.measures        = {'L', 'efficiency', 'eccentricity', 'radius', 'diameter'};  % which charpath measures to compute
+OPTIONS.PATHLENGTH.computeGlobal   = 'yes';       % whole-network path length
+OPTIONS.PATHLENGTH.computeROI      = 'yes';       % per-ROI path length (small subgraphs; interpret with caution)
+OPTIONS.PATHLENGTH.ROI             = ROI;
+OPTIONS.PATHLENGTH.edgeType        = 'weighted';
+OPTIONS.PATHLENGTH.spctrmfield     = 'plispctrm';
+OPTIONS.PATHLENGTH.saveData        = OPTIONS.saveData;
+OPTIONS.PATHLENGTH.pathsFcn        = OPTIONS.pathsScript;
+OPTIONS.PATHLENGTH.overwrite       = 'yes';
+
+%% Path length summary (cross-subject) options
+OPTIONS.PATHLENGTHSUMMARY.inputName  = OPTIONS.PATHLENGTH.outputName;
+OPTIONS.PATHLENGTHSUMMARY.outputName = 'pathlength_summary';
+OPTIONS.PATHLENGTHSUMMARY.format     = 'both'; % 'csv' | 'mat' | 'both'
+OPTIONS.PATHLENGTHSUMMARY.pathsFcn   = OPTIONS.pathsScript;

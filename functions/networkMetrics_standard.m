@@ -108,3 +108,21 @@ end
 clear OPTIONS; setOptionsNetmet
 
 bv_collectNetmetSummary(OPTIONS.CLUSTERINGSUMMARY);
+
+%% CALCULATE PATH LENGTH
+clear OPTIONS; setOptionsNetmet
+
+[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+for iSubjects = startSubject:endSubject
+
+    cfg             = OPTIONS.PATHLENGTH;
+    cfg.currSubject = subjectFolderNames{iSubjects};
+    cfg.quiet       = 'no';
+
+    pathlen = gr_calculatePathlengthWs(cfg);
+end
+
+%% COLLECT PATH LENGTH SUMMARY (cross-subject)
+clear OPTIONS; setOptionsNetmet
+
+bv_collectNetmetSummary(OPTIONS.PATHLENGTHSUMMARY);
