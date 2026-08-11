@@ -12,9 +12,26 @@ OPTIONS.saveData    = 'yes';
 OPTIONS.pathsScript = 'setPaths';
 
 %% PLI connectivity options
+% Frequency bands for PLI connectivity (and therefore for every downstream
+% network metric, which just reports one column per band already present
+% in the PLI file). Fields are band labels, values are [low high] Hz
+% ranges used to band-pass filter the continuous signal before PLI is
+% computed for that band. Add/remove/rename bands here as needed - column
+% order downstream follows fieldnames(freqBands), i.e. the order below.
+freqBands = struct;
+freqBands.delta       = [1 3];   % Hz
+freqBands.theta       = [4 7];   % Hz
+freqBands.alpha       = [8 12];  % Hz
+freqBands.beta        = [13 25]; % Hz
+freqBands.gamma       = [26 35]; % Hz
+freqBands.infantTheta = [3 6];   % Hz
+freqBands.infantAlpha = [6 9];   % Hz
+freqBands.total       = [1 35];  % Hz
+
 OPTIONS.PLICONNECTIVITY.inputName      = 'APPEND';   % clean-trial definitions (sampleinfo/trialinfo/condition)
 OPTIONS.PLICONNECTIVITY.method         = 'pli';      % connectivity method
 OPTIONS.PLICONNECTIVITY.freqOutput     = 'powandcsd';
+OPTIONS.PLICONNECTIVITY.freqBands      = freqBands;
 OPTIONS.PLICONNECTIVITY.triallength    = OPTIONS.triallength;
 OPTIONS.PLICONNECTIVITY.outputName     = ['PLI' num2str(OPTIONS.triallength)];
 OPTIONS.PLICONNECTIVITY.saveData       = OPTIONS.saveData;

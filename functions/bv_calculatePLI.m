@@ -1,4 +1,16 @@
 function [ connectivity ] = bv_calculatePLI(cfg, data)
+% Computes PLI connectivity per frequency band from preprocessed EEG data.
+%
+% Args (relevant to frequency bands; see below for the rest):
+%     cfg.freqBands (struct, optional): Fields are band labels, values are
+%         ``[low high]`` Hz ranges used to band-pass filter the continuous
+%         signal before PLI is computed for that band (matching the
+%         cfg.freqBands convention used by bv_extractROIPower). Defaults to
+%         the same bands used by the power-estimates steps: delta, theta,
+%         alpha, beta, gamma, infantTheta, infantAlpha. Band order
+%         (and therefore column order downstream) follows
+%         fieldnames(cfg.freqBands), i.e. the order the fields were
+%         assigned in.
 
 %%%%%% general check for inputs %%%%%%
 ntrials         = ft_getopt(cfg, 'ntrials','all');
@@ -14,10 +26,20 @@ keeptrials      = ft_getopt(cfg, 'keeptrials', 'no');
 quiet           = ft_getopt(cfg, 'quiet');
 preprocOptions  = ft_getopt(cfg, 'preprocOptions', []);
 overwrite       = ft_getopt(cfg, 'overwrite', 'no');
-freqLabel       = ft_getopt(cfg, 'freqLabel',  ...
-    {'delta', 'theta', 'alpha1', 'alpha2','beta', 'gamma1', 'gamma2'});
-freqRng         = ft_getopt(cfg, 'freqRng', ...
-    {[0.2 2.9], [3 5.9], [6 8.9], [9 11.9], [12 25], [25 45], [55 70]});
+
+%% default frequency bands (matching the power-estimates steps' bands)
+defaultFreqBands.delta       = [1 3];   % Hz
+defaultFreqBands.theta       = [4 7];   % Hz
+defaultFreqBands.alpha       = [8 12];  % Hz
+defaultFreqBands.beta        = [13 25]; % Hz
+defaultFreqBands.gamma       = [26 35]; % Hz
+defaultFreqBands.infantTheta = [3 6];   % Hz
+defaultFreqBands.infantAlpha = [6 9];   % Hz
+defaultFreqBands.total       = [1 35];  % Hz
+
+freqBands = ft_getopt(cfg, 'freqBands', defaultFreqBands);
+freqLabel = fieldnames(freqBands);
+freqRng   = struct2cell(freqBands);
 
 if strcmpi(quiet, 'yes')
     quiet = true;
@@ -30,9 +52,9 @@ if nargin < 2
     if ~quiet; disp(currSubject); end
     eval(pathsFcn)
     eval(optionsFcn)
-    
+
     subjectFolderPath = [PATHS.SUBJECTS filesep currSubject];
-    
+
     if ~quiet
         [subjectdata, check, data] = bv_check4data(subjectFolderPath, inputName);
         if ~check
@@ -44,7 +66,7 @@ if nargin < 2
             error('%s: input data not found', currSubject)
         end
     end
-    
+
     if strcmpi(overwrite, 'no')
         if isfield(subjectdata.PATHS, upper(outputName))
             if exist(subjectdata.PATHS.(upper(outputName)), 'file')
@@ -54,7 +76,7 @@ if nargin < 2
             end
         end
     end
-    
+
     subjectdata.cfgs.(outputName) = cfg;
 elseif isfield(cfg, 'currSubject')
 
@@ -96,13 +118,13 @@ for iFreq = 1:length(freqLabel)
     cfg.hpfreq = currFreqRng(1);
     cfg.hpinstabilityfix = 'reduce';
     evalc('origdata_filt = ft_preprocessing(cfg, origdata);');
-    
+
     if ~quiet; fprintf('\t cut out clean data according to input file ... \n'); end
     trl = [data.sampleinfo, zeros(size(data.sampleinfo,1),1), data.trialinfo];
     cfg = [];
     cfg.trl = trl;
     evalc('origdata_filt = ft_redefinetrial(cfg, origdata_filt);');
-    
+
     % cut, if needed data into trials
     if ~isempty(triallength)
         cfg = [];
@@ -114,7 +136,7 @@ for iFreq = 1:length(freqLabel)
         else
             evalc('[dataCut, finished] = bv_cutAppendedIntoTrials(cfg, origdata_filt);');
         end
-        
+
         if ~finished
             connectivity = [];
             return;
@@ -122,17 +144,17 @@ for iFreq = 1:length(freqLabel)
     else
         dataCut = origdata_filt;
     end
-    
+
     if not(strcmpi(condition, 'all'))
         cfg = [];
         cfg.trials = find(ismember(dataCut.trialinfo, condition));
         evalc('dataCut = ft_selectdata(cfg, dataCut);');
     end
-        
+
     if ~quiet; fprintf('\t calculating PLI ... '); end
     PLIs = PLI(dataCut.trial,1);
     PLIs = cat(3,PLIs{:});
-    
+
     if strcmpi(keeptrials, 'yes')
         connectivity.plispctrm(:,:,:, iFreq) = PLIs;
         connectivity.dimord = 'chan_chan_trl_freq';
@@ -142,13 +164,14 @@ for iFreq = 1:length(freqLabel)
         connectivity.plispctrm(:,:,iFreq) = mean(PLIs,3);
         connectivity.dimord = 'chan_chan_freq';
     end
-    
+
     if ~quiet; fprintf('done!\n'); end
 end
 
-connectivity.freq = freqLabel;
-connectivity.freqRng = freqRng;
-connectivity.label = dataCut.label;
+connectivity.freq      = freqLabel;
+connectivity.freqRng   = freqRng;
+connectivity.freqBands = freqBands;
+connectivity.label     = dataCut.label;
 connectivity.trialinfo = dataCut.trialinfo;
 
 %         % find removed channels and add a row of nans
@@ -164,12 +187,12 @@ connectivity.trialinfo = dataCut.trialinfo;
 
 %%%%%% save data %%%%%%
 if strcmpi(saveData, 'yes')
-    
+
     outputFilename = [subjectdata.subjectName '_' outputName '.mat'];
     fieldname = upper(outputName);
     subjectdata.PATHS.(fieldname) = [subjectdata.PATHS.NETMETDIR filesep ...
         outputFilename];
-    
+
     if ~quiet
         fprintf('\t saving %s ... ', outputFilename);
         save(subjectdata.PATHS.(fieldname), 'connectivity')
@@ -183,7 +206,7 @@ if strcmpi(saveData, 'yes')
     else
         save(subjectdata.PATHS.(fieldname), 'connectivity')
         save([subjectdata.PATHS.SUBJECTDIR filesep 'Subject.mat'], 'subjectdata')
-    end    
+    end
 
 end
 
