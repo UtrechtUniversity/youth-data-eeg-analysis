@@ -95,81 +95,61 @@ end
 
 if ~exist(PATHS.SUBJECTS, 'dir'); mkdir(PATHS.SUBJECTS); end
 
+removingSubjectsCfg = [];
+removingSubjectsCfg.pathsFcn = pathsFcn;
+
 nSubjects = 0;
 for subjIndex = 1:length(files)
     subjectdata = struct();
-
-    % --- extract metadata from folder levels ---
-    relativePath = strrep(files(subjIndex).folder, PATHS.RAWS, '');
-    if ~isempty(relativePath) && relativePath(1) == filesep
-        relativePath = relativePath(2:end);
-    end
-    folderParts = strsplit(relativePath, filesep);
-
-    for i = 1:min(length(folderParts), length(folderlabel))
-        if ~isempty(folderlabel{i})
-            subjectdata.(folderlabel{i}) = folderParts{i};
-        end
-    end
-
-    % --- optionally extract metadata from filename parts ---
     [~, cFile] = fileparts(files(subjIndex).name);
-    if ~isempty(inputnames)
-        localInputnames = inputnames;
-        splitFile = strsplit(cFile, rawdelim);
 
-        inputdiff = length(splitFile) - length(localInputnames);
-        if inputdiff > 0
-            localInputnames = [localInputnames, cell(1, inputdiff)];
-        elseif inputdiff < 0
-            localInputnames = localInputnames(1:length(localInputnames) + inputdiff);
+    % --- resolve metadata and subject folder name ---
+    try
+        % extract metadata from folder levels
+        relativePath = strrep(files(subjIndex).folder, PATHS.RAWS, '');
+        if ~isempty(relativePath) && relativePath(1) == filesep
+            relativePath = relativePath(2:end);
+        end
+        folderParts = strsplit(relativePath, filesep);
+
+        for i = 1:min(length(folderParts), length(folderlabel))
+            if ~isempty(folderlabel{i})
+                subjectdata.(folderlabel{i}) = folderParts{i};
+            end
         end
 
-        validIdx = ~cellfun(@isempty, localInputnames);
-        splitFile       = splitFile(validIdx);
-        localInputnames = localInputnames(validIdx);
+        % optionally extract metadata from filename parts
+        if ~isempty(inputnames)
+            localInputnames = inputnames;
+            splitFile = strsplit(cFile, rawdelim);
 
-        for i = 1:length(splitFile)
-            subjectdata.(localInputnames{i}) = splitFile{i};
+            inputdiff = length(splitFile) - length(localInputnames);
+            if inputdiff > 0
+                localInputnames = [localInputnames, cell(1, inputdiff)];
+            elseif inputdiff < 0
+                localInputnames = localInputnames(1:length(localInputnames) + inputdiff);
+            end
+
+            validIdx = ~cellfun(@isempty, localInputnames);
+            splitFile       = splitFile(validIdx);
+            localInputnames = localInputnames(validIdx);
+
+            for i = 1:length(splitFile)
+                subjectdata.(localInputnames{i}) = splitFile{i};
+            end
         end
+
+        % construct subject folder name from sfolderstruct fields
+        nameParts = cellfun(@(f) subjectdata.(f), sfolderstruct, 'UniformOutput', false);
+        subjectdata.subjectName = strjoin(nameParts, rawdelim);
+        nameResolved = true;
+    catch
+        % subject name could not be resolved from folder/filename metadata:
+        % fall back to the raw filename so the failure is still recorded
+        subjectdata = struct();
+        subjectdata.subjectName = cFile;
+        nameResolved = false;
     end
-
-    % --- resolve data file paths ---
-    switch dataType
-        case 'eeg'
-            israw    = 1;
-            dataFile = fullfile(files(subjIndex).folder, [cFile '.eeg']);
-            hdrFile  = fullfile(files(subjIndex).folder, [cFile '.vhdr']);
-            if ~exist(dataFile, 'file')
-                error('dataFile: %s not found!', dataFile)
-            elseif ~exist(hdrFile, 'file')
-                error('headerfile: %s not found!', hdrFile)
-            end
-
-        case {'edf', 'bdf', 'EDF', 'BDF'}
-            israw    = 1;
-            dataFile = fullfile(files(subjIndex).folder, files(subjIndex).name);
-            hdrFile  = dataFile;
-            if ~exist(dataFile, 'file')
-                error('dataFile: %s not found!', dataFile)
-            end
-
-        case 'mat'
-            israw    = 0;
-            dataFile = 'unknown';
-            hdrFile  = 'unknown';
-            subjectdata.PATHS.(upper(prevAnalysis)) = fullfile(PATHS.PREPROC, [cFile '.mat']);
-            if ~exist(subjectdata.PATHS.(upper(prevAnalysis)), 'file')
-                error('dataFile: %s not found!', subjectdata.PATHS.(upper(prevAnalysis)))
-            end
-
-        otherwise
-            error('unknown datatype: %s', dataType);
-    end
-
-    % --- construct subject folder name from sfolderstruct fields ---
-    nameParts = cellfun(@(f) subjectdata.(f), sfolderstruct, 'UniformOutput', false);
-    subjectdata.subjectName = strjoin(nameParts, rawdelim);
 
     % suffix with a counter if a folder with this name already exists
     existingFolders = dir(PATHS.SUBJECTS);
@@ -193,16 +173,60 @@ for subjIndex = 1:length(files)
     subjectdata.PATHS.SUBJECTDIR = paths2SubjectFolder;
     subjectdata.PATHS.PREPROCDIR = preprocDir;
     subjectdata.PATHS.POWERDIR   = powerDir;
-    subjectdata.PATHS.DATAFILE   = dataFile;
-    subjectdata.PATHS.HDRFILE    = hdrFile;
-    [~, subjectdata.filename, ~] = fileparts(subjectdata.PATHS.DATAFILE);
-
     subjectdata.date = date;
-    [subjectdata.testdate, subjectdata.testtime] = bv_readOutDateAndTimeBdf(dataFile);
-
     subjectdata.removed       = false(1);
     subjectdata.removedDuring = '';
     subjectdata.removedreason = '';
+
+    if ~nameResolved
+        save(fullfile(paths2SubjectFolder, 'Subject'), 'subjectdata');
+        removingSubjects(removingSubjectsCfg, subjectdata.subjectName, ...
+            'subject name could not be resolved from raw file/folder structure');
+        clear subjectdata
+        continue
+    end
+
+    % --- resolve data file paths and read out acquisition date/time ---
+    try
+        switch dataType
+            case 'eeg'
+                dataFile = fullfile(files(subjIndex).folder, [cFile '.eeg']);
+                hdrFile  = fullfile(files(subjIndex).folder, [cFile '.vhdr']);
+                if ~exist(dataFile, 'file')
+                    error('dataFile: %s not found!', dataFile)
+                elseif ~exist(hdrFile, 'file')
+                    error('headerfile: %s not found!', hdrFile)
+                end
+
+            case {'edf', 'bdf', 'EDF', 'BDF'}
+                dataFile = fullfile(files(subjIndex).folder, files(subjIndex).name);
+                hdrFile  = dataFile;
+                if ~exist(dataFile, 'file')
+                    error('dataFile: %s not found!', dataFile)
+                end
+
+            case 'mat'
+                dataFile = 'unknown';
+                hdrFile  = 'unknown';
+                subjectdata.PATHS.(upper(prevAnalysis)) = fullfile(PATHS.PREPROC, [cFile '.mat']);
+                if ~exist(subjectdata.PATHS.(upper(prevAnalysis)), 'file')
+                    error('dataFile: %s not found!', subjectdata.PATHS.(upper(prevAnalysis)))
+                end
+
+            otherwise
+                error('unknown datatype: %s', dataType);
+        end
+
+        subjectdata.PATHS.DATAFILE = dataFile;
+        subjectdata.PATHS.HDRFILE  = hdrFile;
+        [~, subjectdata.filename, ~] = fileparts(subjectdata.PATHS.DATAFILE);
+        [subjectdata.testdate, subjectdata.testtime] = bv_readOutDateAndTimeBdf(dataFile);
+    catch ME
+        save(fullfile(paths2SubjectFolder, 'Subject'), 'subjectdata');
+        removingSubjects(removingSubjectsCfg, subjectdata.subjectName, ME.message);
+        clear subjectdata
+        continue
+    end
 
     fprintf('\t saving Subject.mat...')
     save(fullfile(subjectdata.PATHS.SUBJECTDIR, 'Subject'), 'subjectdata');
@@ -211,7 +235,11 @@ for subjIndex = 1:length(files)
     if strcmpi(overwrite, 'no')
         subjectdatasummary = bv_addSubjectToSubjectsummary(subjectdatasummary, subjectdata);
     else
-        subjectdatasummary(subjIndex) = subjectdata;
+        % index by nSubjects+1 (not subjIndex) so that files skipped via
+        % continue above never leave gaps with subjectName = [] in the
+        % struct array - those gaps corrupt every later
+        % ismember(...subjectName) lookup against SubjectSummary.mat
+        subjectdatasummary(nSubjects + 1) = subjectdata;
     end
 
     clear subjectdata

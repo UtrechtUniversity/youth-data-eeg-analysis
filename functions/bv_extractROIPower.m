@@ -1,10 +1,13 @@
 function power = bv_extractROIPower(cfg, freq)
 % Extracts ROI- and band-specific power from a FieldTrip frequency structure.
 %
-% For each condition, ROI, and frequency band specified in cfg, the function
-% computes absolute log10 power and relative power (band vs total range).
-% A 'Global' entry using all channels is appended after the named ROIs.
-% Results are returned as a MATLAB table within the output struct.
+% For each ROI and frequency band, power is computed at three levels:
+%   - per epoch (one row per clean epoch, unaveraged)
+%   - per condition (averaged over that condition's clean epochs)
+%   - global (averaged over all clean epochs, pooled across conditions)
+% Condition- and global-level rows record how many clean epochs they were
+% averaged over (nEpochs). A 'Global' entry using all channels is appended
+% after the named ROIs at every level.
 %
 % Args:
 %     cfg.currSubject (str): Subject folder name. Required when no freq is
@@ -16,8 +19,17 @@ function power = bv_extractROIPower(cfg, freq)
 %     cfg.outputName (str): Unique label for output file and
 %         ``subjectdata.PATHS`` entry. Required when saving data.
 %     cfg.conditions (numeric, optional): Condition codes to process
-%         separately. Set to ``[]`` to pool all trials (condLabel = 0 in
-%         output). Defaults to ``[]``.
+%         separately. Defaults to ``[]`` (no per-condition breakdown; only
+%         the epoch-level and Global rows are produced).
+%     cfg.conditionLabels (cell array of str, optional): Display labels for
+%         cfg.conditions' Condition column, matched *positionally* - the
+%         i-th label is used for cfg.conditions(i), so this must be in the
+%         same order and have the same number of elements as cfg.conditions
+%         (e.g. ``cfg.conditions = [129 139]; cfg.conditionLabels =
+%         {'NonSocial', 'Social'}`` labels 129 as 'NonSocial' and 139 as
+%         'Social'). Codes without a label (or when this is omitted/empty)
+%         fall back to their stringified number. The pooled/global row is
+%         always labelled 'Global'.
 %     cfg.ROI (struct, optional): Struct where each field name is an ROI
 %         label and its value is a cell array of channel labels to average.
 %         Defaults to a set of standard frontal, central, parietal, and
@@ -39,14 +51,22 @@ function power = bv_extractROIPower(cfg, freq)
 %     cfg.quiet (str, optional): Suppress command window output
 %         (``'yes'`` or ``'no'``). Defaults to ``'no'``.
 %     freq (struct, optional): FieldTrip frequency structure from
-%         ``bv_calculateFrequency``. If omitted, loaded from disk.
+%         ``bv_calculateFrequency``, with one "trial" per clean epoch. If
+%         omitted, loaded from disk.
 %
 % Returns:
-%     power (struct): Struct with fields ``table`` (MATLAB table with columns
-%         Subject, Wave, Condition, ROI, plus one ``_abs`` and one ``_rel``
-%         column per named band, and Total), ``freqBands``, ``ROI``,
-%         ``conditions``, and ``calcMethod``. Returns empty (``[]``) if
-%         output already exists and ``cfg.overwrite`` is ``'no'``.
+%     power (struct): Struct with fields:
+%       - ``table``: MATLAB table with columns Subject, Wave, Condition,
+%         nEpochs, ROI, plus one ``_abs`` and one ``_rel`` column per named
+%         band, and Total. Contains only the per-condition and Global rows
+%         (i.e. what's suitable for a cross-subject summary CSV).
+%       - ``epochTable``: same columns minus nEpochs, plus Epoch (index of
+%         the clean epoch within this subject). One row per epoch x ROI.
+%         Intended for per-subject detail only, not cross-subject
+%         aggregation.
+%       - ``freqBands``, ``ROI``, ``conditions``, ``calcMethod``.
+%     Returns empty (``[]``) if output already exists and ``cfg.overwrite``
+%     is ``'no'``.
 %
 % Example:
 %     ```matlab
@@ -56,6 +76,7 @@ function power = bv_extractROIPower(cfg, freq)
 %     cfg.outputName  = 'POWER';
 %     cfg.saveData    = 'yes';
 %     cfg.conditions  = [129 139];
+%     cfg.conditionLabels = {'NonSocial', 'Social'};
 %     power = bv_extractROIPower(cfg);
 %     ```
 
@@ -68,24 +89,36 @@ defaultROI.LeftParietal  = {'T7','CP5','P7','P3'};
 defaultROI.RightParietal = {'T8','CP6','P8','P4'};
 defaultROI.Occipital     = {'PO3','PO4','O1','Oz','O2','Pz'};
 
-defaultBands.delta = [1 3]
+defaultBands.delta = [1 3];
 defaultBands.theta = [3 5];
 defaultBands.alpha = [5 15];
-defaultBands.total = [1 15];
+defaultBands.total = [1 35];
 
 %% get options
-currSubject = ft_getopt(cfg, 'currSubject');
-inputName   = ft_getopt(cfg, 'inputName');
-saveData    = ft_getopt(cfg, 'saveData', 'no');
-outputName  = ft_getopt(cfg, 'outputName');
-conditions  = ft_getopt(cfg, 'conditions', []);
-ROI         = ft_getopt(cfg, 'ROI', defaultROI);
-freqBands   = ft_getopt(cfg, 'freqBands', defaultBands);
-calcMethod  = ft_getopt(cfg, 'calcMethod', 'raw');
-pathsFcn    = ft_getopt(cfg, 'pathsFcn', 'setPaths');
-optionsFcn  = ft_getopt(cfg, 'optionsFcn', 'setOptionsPower');
-overwrite   = ft_getopt(cfg, 'overwrite', 'no');
-quiet       = ft_getopt(cfg, 'quiet', 'no');
+currSubject         = ft_getopt(cfg, 'currSubject');
+inputName           = ft_getopt(cfg, 'inputName');
+saveData            = ft_getopt(cfg, 'saveData', 'no');
+outputName          = ft_getopt(cfg, 'outputName');
+conditions          = ft_getopt(cfg, 'conditions', []);
+conditionLabelsList = ft_getopt(cfg, 'conditionLabels', {});
+
+if ~isempty(conditionLabelsList) && length(conditionLabelsList) ~= length(conditions)
+    error(['cfg.conditionLabels must have the same number of elements as ' ...
+        'cfg.conditions (one label per condition code, in the same order)'])
+end
+
+conditionLabels = containers.Map('KeyType', 'double', 'ValueType', 'any');
+for i = 1:length(conditionLabelsList)
+    conditionLabels(conditions(i)) = conditionLabelsList{i};
+end
+
+ROI             = ft_getopt(cfg, 'ROI', defaultROI);
+freqBands       = ft_getopt(cfg, 'freqBands', defaultBands);
+calcMethod      = ft_getopt(cfg, 'calcMethod', 'raw');
+pathsFcn        = ft_getopt(cfg, 'pathsFcn', 'setPaths');
+optionsFcn      = ft_getopt(cfg, 'optionsFcn', 'setOptionsPower');
+overwrite       = ft_getopt(cfg, 'overwrite', 'no');
+quiet           = ft_getopt(cfg, 'quiet', 'no');
 
 quiet = strcmpi(quiet, 'yes');
 
@@ -156,14 +189,6 @@ if ~isfield(freqBands, 'total')
     error('cfg.freqBands must contain a ''total'' field used as denominator for relative power')
 end
 
-%% build condition loop list
-% empty conditions → single pass over all trials (condLabel = 0 in table)
-if isempty(conditions)
-    condList = {[]};
-else
-    condList = num2cell(conditions);
-end
-
 %% identify non-total band names
 bandNames     = fieldnames(freqBands);
 bandPairNames = bandNames(~strcmp(bandNames, 'total'));
@@ -172,55 +197,70 @@ nBands        = length(bandPairNames);
 totalRng  = freqBands.total;
 total_idx = find(freq.freq >= totalRng(1) & freq.freq < totalRng(2));
 
-%% initialise output table columns
-Subject   = {};
-Wave      = {};
-Condition = {};
-ROIcol    = {};
-abs_vals  = zeros(0, nBands);
-rel_vals  = zeros(0, nBands);
-Total     = [];
-
-ROI_names    = fieldnames(ROI);
+ROI_names     = fieldnames(ROI);
 roi_all_names = [ROI_names; {'Global'}];
 
-if ~quiet; fprintf('\t extracting ROI power ... '); end
+% pre-resolve channel indices per ROI (independent of condition/epoch)
+roi_chan_idx = cell(size(roi_all_names));
+for r = 1:length(roi_all_names)
+    if strcmp(roi_all_names{r}, 'Global')
+        roi_chan_idx{r} = [];  % handled separately below (all channels)
+    else
+        roi_chan_idx{r} = find(ismember(freq.label, ROI.(roi_all_names{r})));
+    end
+end
 
 eps_val = 1e-12;
 
-for c = 1:length(condList)
-    cond = condList{c};
+%% helper: resolve a display label for a condition code
+resolveLabel = @(code) resolveConditionLabel(code, conditionLabels);
 
-    if isempty(cond)
-        freq_sel  = freq;
-        condLabel = 0;
-    else
-        if ~isfield(freq, 'trialinfo')
-            error('%s: no trialinfo found in freq structure', currSubject)
-        end
-        trial_idx = find(freq.trialinfo == cond);
-        if isempty(trial_idx)
-            continue
-        end
-        ftcfg        = [];
-        ftcfg.trials = trial_idx;
-        evalc('freq_sel = ft_selectdata(ftcfg, freq);');
-        condLabel = cond;
+%% build the list of (label, trial-index-set, nEpochs) groups to average:
+% one per requested condition, plus one Global (pooled) group
+groupLabels  = {};
+groupTrlIdx  = {};
+
+for c = 1:length(conditions)
+    cond = conditions(c);
+    if ~isfield(freq, 'trialinfo')
+        error('%s: no trialinfo found in freq structure', currSubject)
     end
-
-    if isempty(freq_sel.powspctrm)
+    trial_idx = find(freq.trialinfo == cond);
+    if isempty(trial_idx)
         continue
     end
+    groupLabels{end+1}  = resolveLabel(cond); %#ok<AGROW>
+    groupTrlIdx{end+1}  = trial_idx;          %#ok<AGROW>
+end
+
+groupLabels{end+1} = 'Global';
+groupTrlIdx{end+1} = 1:size(freq.powspctrm, 1);
+
+%% compute per-condition / Global (averaged) rows -> power.table
+Subject    = {};
+Wave       = {};
+Condition  = {};
+nEpochsCol = [];
+ROIcol     = {};
+abs_vals   = zeros(0, nBands);
+rel_vals   = zeros(0, nBands);
+Total      = [];
+
+if ~quiet; fprintf('\t extracting ROI power (condition/global levels) ... '); end
+
+for g = 1:length(groupLabels)
+    trial_idx = groupTrlIdx{g};
+    if isempty(trial_idx); continue; end
 
     for r = 1:length(roi_all_names)
         roi_name = roi_all_names{r};
 
         if strcmp(roi_name, 'Global')
-            roi_pow = freq_sel.powspctrm;
+            roi_pow = freq.powspctrm(trial_idx, :, :);
         else
-            chan_idx = find(ismember(freq.label, ROI.(roi_name)));
+            chan_idx = roi_chan_idx{r};
             if isempty(chan_idx); continue; end
-            roi_pow = freq_sel.powspctrm(:, chan_idx, :);
+            roi_pow = freq.powspctrm(trial_idx, chan_idx, :);
         end
 
         total_roi = mean(roi_pow(:, :, total_idx), 'all');
@@ -228,10 +268,10 @@ for c = 1:length(condList)
         row_abs = zeros(1, nBands);
         row_rel = zeros(1, nBands);
         for b = 1:nBands
-            bname   = bandPairNames{b};
-            brng    = freqBands.(bname);
-            bidx    = find(freq.freq >= brng(1) & freq.freq < brng(2));
-            bpow    = mean(roi_pow(:, :, bidx), 'all');
+            bname = bandPairNames{b};
+            brng  = freqBands.(bname);
+            bidx  = find(freq.freq >= brng(1) & freq.freq < brng(2));
+            bpow  = mean(roi_pow(:, :, bidx), 'all');
             if strcmpi(calcMethod, 'log10')
                 row_abs(b) = log10(bpow + eps_val);
                 row_rel(b) = log10(bpow + eps_val) - log10(total_roi + eps_val); % eps guards against log10(0) = -Inf
@@ -243,26 +283,25 @@ for c = 1:length(condList)
             end
         end
 
-        Subject{end+1,1}   = subjName;   %#ok<AGROW>
-        Wave{end+1,1}      = waveLabel;  %#ok<AGROW>
-        Condition{end+1,1} = condLabel;  %#ok<AGROW>
-        ROIcol{end+1,1}    = roi_name;   %#ok<AGROW>
-        abs_vals(end+1,:)  = row_abs;    %#ok<AGROW>
-        rel_vals(end+1,:)  = row_rel;    %#ok<AGROW>
+        Subject{end+1,1}    = subjName;              %#ok<AGROW>
+        Wave{end+1,1}       = waveLabel;             %#ok<AGROW>
+        Condition{end+1,1}  = groupLabels{g};        %#ok<AGROW>
+        nEpochsCol(end+1,1) = length(trial_idx);     %#ok<AGROW>
+        ROIcol{end+1,1}     = roi_name;              %#ok<AGROW>
+        abs_vals(end+1,:)   = row_abs;               %#ok<AGROW>
+        rel_vals(end+1,:)   = row_rel;               %#ok<AGROW>
         if strcmpi(calcMethod, 'log10')
-            Total(end+1,1) = log10(total_roi + eps_val);    %#ok<AGROW>
-        else % 'raw'
-            Total(end+1,1) = total_roi;    %#ok<AGROW>
+            Total(end+1,1) = log10(total_roi + eps_val); %#ok<AGROW>
+        else
+            Total(end+1,1) = total_roi;              %#ok<AGROW>
         end
-
     end
 end
 
 if ~quiet; fprintf('done \n'); end
 
-%% assemble output table
-T = table(Subject, Wave, Condition, ROIcol, ...
-    'VariableNames', {'Subject', 'Wave', 'Condition', 'ROI'});
+T = table(Subject, Wave, Condition, nEpochsCol, ROIcol, ...
+    'VariableNames', {'Subject', 'Wave', 'Condition', 'nEpochs', 'ROI'});
 for b = 1:nBands
     bname = bandPairNames{b};
     colBase = [upper(bname(1)) bname(2:end)];
@@ -271,7 +310,84 @@ for b = 1:nBands
 end
 T.Total = Total;
 
+%% compute per-epoch (unaveraged) rows -> power.epochTable
+if ~quiet; fprintf('\t extracting ROI power (epoch level) ... '); end
+
+eSubject   = {};
+eWave      = {};
+eCondition = {};
+eEpoch     = [];
+eROIcol    = {};
+eabs_vals  = zeros(0, nBands);
+erel_vals  = zeros(0, nBands);
+eTotal     = [];
+
+nEpochsTotal = size(freq.powspctrm, 1);
+if isfield(freq, 'trialinfo')
+    epochCondCode = freq.trialinfo;
+else
+    epochCondCode = nan(nEpochsTotal, 1);
+end
+
+for e = 1:nEpochsTotal
+    for r = 1:length(roi_all_names)
+        roi_name = roi_all_names{r};
+
+        if strcmp(roi_name, 'Global')
+            roi_pow = freq.powspctrm(e, :, :);
+        else
+            chan_idx = roi_chan_idx{r};
+            if isempty(chan_idx); continue; end
+            roi_pow = freq.powspctrm(e, chan_idx, :);
+        end
+
+        total_roi = mean(roi_pow(:, :, total_idx), 'all');
+
+        row_abs = zeros(1, nBands);
+        row_rel = zeros(1, nBands);
+        for b = 1:nBands
+            bname = bandPairNames{b};
+            brng  = freqBands.(bname);
+            bidx  = find(freq.freq >= brng(1) & freq.freq < brng(2));
+            bpow  = mean(roi_pow(:, :, bidx), 'all');
+            if strcmpi(calcMethod, 'log10')
+                row_abs(b) = log10(bpow + eps_val);
+                row_rel(b) = log10(bpow + eps_val) - log10(total_roi + eps_val);
+            elseif strcmpi(calcMethod, 'raw')
+                row_abs(b) = bpow;
+                row_rel(b) = bpow / (total_roi + eps_val);
+            end
+        end
+
+        eSubject{end+1,1}   = subjName;                     %#ok<AGROW>
+        eWave{end+1,1}      = waveLabel;                     %#ok<AGROW>
+        eCondition{end+1,1} = resolveLabel(epochCondCode(e)); %#ok<AGROW>
+        eEpoch(end+1,1)     = e;                              %#ok<AGROW>
+        eROIcol{end+1,1}    = roi_name;                       %#ok<AGROW>
+        eabs_vals(end+1,:)  = row_abs;                        %#ok<AGROW>
+        erel_vals(end+1,:)  = row_rel;                        %#ok<AGROW>
+        if strcmpi(calcMethod, 'log10')
+            eTotal(end+1,1) = log10(total_roi + eps_val); %#ok<AGROW>
+        else
+            eTotal(end+1,1) = total_roi;                   %#ok<AGROW>
+        end
+    end
+end
+
+if ~quiet; fprintf('done \n'); end
+
+Tepoch = table(eSubject, eWave, eCondition, eEpoch, eROIcol, ...
+    'VariableNames', {'Subject', 'Wave', 'Condition', 'Epoch', 'ROI'});
+for b = 1:nBands
+    bname = bandPairNames{b};
+    colBase = [upper(bname(1)) bname(2:end)];
+    Tepoch.([colBase '_abs']) = eabs_vals(:, b);
+    Tepoch.([colBase '_rel']) = erel_vals(:, b);
+end
+Tepoch.Total = eTotal;
+
 power.table      = T;
+power.epochTable = Tepoch;
 power.freqBands  = freqBands;
 power.ROI        = ROI;
 power.conditions = conditions;
@@ -294,4 +410,17 @@ if strcmpi(saveData, 'yes')
         save(subjectdata.PATHS.(fieldname), 'power')
         save(fullfile(subjectdata.PATHS.SUBJECTDIR, 'Subject.mat'), 'subjectdata')
     end
+end
+
+end % function bv_extractROIPower
+
+
+function label = resolveConditionLabel(code, conditionLabels)
+% Resolves a numeric condition code to a display label via conditionLabels
+% (a containers.Map), falling back to the stringified code when unmapped.
+if isa(conditionLabels, 'containers.Map') && isKey(conditionLabels, code)
+    label = conditionLabels(code);
+else
+    label = num2str(code);
+end
 end

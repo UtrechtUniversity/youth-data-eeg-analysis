@@ -33,14 +33,14 @@ end
 
 %% Provide correct paths
 % If the default paths are okay, this step can be skipped
-edit("setPaths.m")
+% edit("setPaths.m")
 
 %% Set paths
 setPaths
 
 %% Set options (optional)
 % If the default settings are okay, this step can be skipped
-edit setOptions
+% edit setOptions
 
 %% Preprocessing
 preprocessingData

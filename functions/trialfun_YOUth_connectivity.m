@@ -39,9 +39,7 @@ begsample = EVsample(triggerIndx) - preTrig;
 endsample = EVsample(triggerIndx) + postTrig;
 
 if ~isempty(begsample) && ~isempty(endsample)
-    if endsample(end) > hdr.nSamples
-        endsample(end) = hdr.nSamples;
-    end
+    endsample(endsample > hdr.nSamples) = hdr.nSamples;
 else
     trl = [];
     return
