@@ -18,11 +18,10 @@ function bc = gr_calculateBetweennessCentrality(cfg, connectivity)
 % within each region for the table, matching how gr_calculateClusteringWs
 % already reduces a per-node clustering-coefficient vector. The raw
 % per-node values are not discarded, though: they are also kept in the
-% ``nodeBC`` field (mirroring gr_calculateQModularity's ``community``
-% field), one entry per table row, each a 1 x nBands cell of
-% struct('labels', ..., 'values', ...) so per-node scores can still be
-% recovered from the saved .mat file even though the tidy summary only
-% has the mean.
+% ``nodeTable`` field as their own tidy long-format table (columns
+% Subject, Wave, Condition, Region, Band, Channel, Value - one row per
+% node per band), so per-node scores can be recovered from the saved .mat
+% file without cross-referencing row/band indices against ``table``.
 %
 % Two fixes relative to the original version:
 %   - removed channels (all-NaN rows) are now dropped before computing,
@@ -90,12 +89,13 @@ function bc = gr_calculateBetweennessCentrality(cfg, connectivity)
 % Returns:
 %     bc (struct): Struct with fields ``table`` (columns Subject, Wave,
 %         Condition, Region, plus one column per frequency band with the
-%         mean normalised betweenness centrality), ``nodeBC`` (cell array,
-%         same row order as ``table``; each entry is a 1 x nBands cell of
-%         struct('labels', {channel labels}, 'values', {per-node
-%         normalised BC}) for that row's condition/region, per band),
-%         ``conditions``, ``ROI``, and ``bands``. Empty (``[]``) if output
-%         already exists and ``cfg.overwrite`` is ``'no'``.
+%         mean normalised betweenness centrality), ``nodeTable`` (a tidy
+%         long-format table with columns Subject, Wave, Condition, Region,
+%         Band, Channel, Value - one row per node per band per condition
+%         per region, holding the per-node normalised betweenness
+%         centrality), ``conditions``, ``ROI``, and ``bands``. Empty
+%         (``[]``) if output already exists and ``cfg.overwrite`` is
+%         ``'no'``.
 
 %% ensure betweenness_bin/betweenness_wei (FieldTrip's bundled BCT) is on the path
 ft_hastoolbox('BCT', 1);
@@ -248,7 +248,15 @@ Wave      = {};
 Condition = {};
 Region    = {};
 band_vals = zeros(0, nfreq);
-nodeBC    = {};   % per row: 1 x nfreq cell, each holding a struct with .labels/.values for that band
+
+% tidy per-node BC accumulators (one row per node per band)
+nSubject   = {};
+nWave      = {};
+nCondition = {};
+nRegion    = {};
+nBand      = {};
+nChannel   = {};
+nValue     = [];
 
 if ~quiet; fprintf('\t calculating betweenness centrality ... '); end
 
@@ -272,8 +280,7 @@ for c = 1:numel(condList)
         idx = regionChans{r};
         regionLabels = labels(idx);
 
-        bcPerBand   = nan(1, nfreq);
-        nodeBCBand  = cell(1, nfreq);
+        bcPerBand = nan(1, nfreq);
         for b = 1:nfreq
             W = Wcond(idx, idx, b);
 
@@ -304,7 +311,15 @@ for c = 1:numel(condList)
                 BCnorm = BC ./ ((n-1)*(n-2));
                 bcPerBand(b) = mean(BCnorm);
 
-                nodeBCBand{b} = struct('labels', {regionLabels(~bad)}, 'values', BCnorm(:)');
+                keepLabels = regionLabels(~bad);
+                nNode      = numel(BCnorm);
+                nSubject   = [nSubject;   repmat({subjName},       nNode, 1)]; %#ok<AGROW>
+                nWave      = [nWave;      repmat({waveLabel},      nNode, 1)]; %#ok<AGROW>
+                nCondition = [nCondition; repmat({condLabel},      nNode, 1)]; %#ok<AGROW>
+                nRegion    = [nRegion;    repmat({regionNames{r}}, nNode, 1)]; %#ok<AGROW>
+                nBand      = [nBand;      repmat({bands{b}},       nNode, 1)]; %#ok<AGROW>
+                nChannel   = [nChannel;   keepLabels(:)];                     %#ok<AGROW>
+                nValue     = [nValue;     BCnorm(:)];                         %#ok<AGROW>
             catch ME
                 warning('gr_calculateBetweennessCentrality:%s %s/%s band %s: %s', ...
                     subjName, regionNames{r}, condLabel, bands{b}, ME.message);
@@ -316,7 +331,6 @@ for c = 1:numel(condList)
         Condition{end+1,1} = condLabel;       %#ok<AGROW>
         Region{end+1,1}    = regionNames{r};  %#ok<AGROW>
         band_vals(end+1,:) = bcPerBand;       %#ok<AGROW>
-        nodeBC{end+1,1}    = nodeBCBand;      %#ok<AGROW>
     end
 end
 
@@ -331,8 +345,11 @@ for b = 1:nfreq
     T.(colName) = band_vals(:, b);
 end
 
+nodeTable = table(nSubject, nWave, nCondition, nRegion, nBand, nChannel, nValue, ...
+    'VariableNames', {'Subject', 'Wave', 'Condition', 'Region', 'Band', 'Channel', 'Value'});
+
 bc.table      = T;
-bc.nodeBC     = nodeBC;
+bc.nodeTable  = nodeTable;
 bc.conditions = conditions;
 bc.ROI        = ROI;
 bc.bands      = bands;

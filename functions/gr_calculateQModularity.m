@@ -70,10 +70,13 @@ function qmod = gr_calculateQModularity(cfg, connectivity)
 % Returns:
 %     qmod (struct): Struct with fields ``table`` (columns Subject, Wave,
 %         Condition, Region, plus one column per frequency band with Q
-%         values), ``community`` (cell array, same row order as ``table``,
-%         holding the per-node community affiliation vector for each
-%         band), ``conditions``, ``ROI``, and ``bands``. Empty (``[]``) if
-%         output already exists and ``cfg.overwrite`` is ``'no'``.
+%         values), ``communityTable`` (a tidy long-format table with
+%         columns Subject, Wave, Condition, Region, Band, Channel,
+%         Community - one row per node per band per condition per region,
+%         fully self-describing rather than requiring cross-referencing
+%         against ``table``'s row order), ``conditions``, ``ROI``, and
+%         ``bands``. Empty (``[]``) if output already exists and
+%         ``cfg.overwrite`` is ``'no'``.
 
 %% ensure community_louvain (FieldTrip's bundled BCT) is on the path
 ft_hastoolbox('BCT', 1);
@@ -227,7 +230,15 @@ Wave      = {};
 Condition = {};
 Region    = {};
 band_vals = zeros(0, nfreq);
-community = {};
+
+% tidy per-node community accumulators (one row per node per band)
+cSubject   = {};
+cWave      = {};
+cCondition = {};
+cRegion    = {};
+cBand      = {};
+cChannel   = {};
+cCommunity = [];
 
 if ~quiet; fprintf('\t calculating Q modularity ... '); end
 
@@ -249,9 +260,9 @@ for c = 1:numel(condList)
 
     for r = 1:numel(regionNames)
         idx = regionChans{r};
+        regionLabels = labels(idx);
 
-        qPerBand  = nan(1, nfreq);
-        ciPerBand = cell(1, nfreq);
+        qPerBand = nan(1, nfreq);
         for b = 1:nfreq
             W = Wcond(idx, idx, b);
 
@@ -274,8 +285,17 @@ for c = 1:numel(condList)
                     case 'weighted'
                         [Ci, Q] = community_louvain(gr_normalizeW(W), gamma);
                 end
-                qPerBand(b)  = Q;
-                ciPerBand{b} = Ci;
+                qPerBand(b) = Q;
+
+                keepLabels = regionLabels(~bad);
+                nNode      = numel(Ci);
+                cSubject   = [cSubject;   repmat({subjName},        nNode, 1)]; %#ok<AGROW>
+                cWave      = [cWave;      repmat({waveLabel},       nNode, 1)]; %#ok<AGROW>
+                cCondition = [cCondition; repmat({condLabel},       nNode, 1)]; %#ok<AGROW>
+                cRegion    = [cRegion;    repmat({regionNames{r}},  nNode, 1)]; %#ok<AGROW>
+                cBand      = [cBand;      repmat({bands{b}},        nNode, 1)]; %#ok<AGROW>
+                cChannel   = [cChannel;   keepLabels(:)];                      %#ok<AGROW>
+                cCommunity = [cCommunity; Ci(:)];                              %#ok<AGROW>
             catch ME
                 warning('gr_calculateQModularity:%s %s/%s band %s: %s', ...
                     subjName, regionNames{r}, condLabel, bands{b}, ME.message);
@@ -287,7 +307,6 @@ for c = 1:numel(condList)
         Condition{end+1,1} = condLabel;        %#ok<AGROW>
         Region{end+1,1}    = regionNames{r};   %#ok<AGROW>
         band_vals(end+1,:) = qPerBand;         %#ok<AGROW>
-        community{end+1,1} = ciPerBand;        %#ok<AGROW>
     end
 end
 
@@ -302,11 +321,14 @@ for b = 1:nfreq
     T.(colName) = band_vals(:, b);
 end
 
-qmod.table      = T;
-qmod.community  = community;
-qmod.conditions = conditions;
-qmod.ROI        = ROI;
-qmod.bands      = bands;
+communityTable = table(cSubject, cWave, cCondition, cRegion, cBand, cChannel, cCommunity, ...
+    'VariableNames', {'Subject', 'Wave', 'Condition', 'Region', 'Band', 'Channel', 'Community'});
+
+qmod.table          = T;
+qmod.communityTable = communityTable;
+qmod.conditions     = conditions;
+qmod.ROI            = ROI;
+qmod.bands          = bands;
 
 %% save data
 if strcmpi(saveData, 'yes')
