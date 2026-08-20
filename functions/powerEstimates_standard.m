@@ -87,3 +87,8 @@ end
 clear OPTIONS; setOptionsPower
 
 bv_collectPowerSummary(OPTIONS.POWERSUMMARY);
+
+%% COLLECT SUBJECT SUMMARY (cross-subject CSV)
+clear OPTIONS; setOptionsPower
+
+bv_collectSubjectSummary(OPTIONS.SUBJECTSUMMARY);

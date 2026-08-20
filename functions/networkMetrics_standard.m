@@ -159,3 +159,8 @@ end
 clear OPTIONS; setOptionsNetmet
 
 bv_collectNetmetSummary(OPTIONS.BCSUMMARY);
+
+%% COLLECT SUBJECT SUMMARY (cross-subject CSV)
+clear OPTIONS; setOptionsNetmet
+
+bv_collectSubjectSummary(OPTIONS.SUBJECTSUMMARY);

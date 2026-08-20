@@ -140,3 +140,8 @@ for iSubjects = startSubject:endSubject
     end
     bv_syncSubjectSummary(currSubject);
 end
+
+%% COLLECT SUBJECT SUMMARY (cross-subject CSV)
+clear OPTIONS; setOptions
+
+bv_collectSubjectSummary(OPTIONS.SUBJECTSUMMARY);

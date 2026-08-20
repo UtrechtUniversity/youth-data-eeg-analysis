@@ -133,3 +133,7 @@ OPTIONS.APPENDED.inputName    = 'CLEANED';
 OPTIONS.APPENDED.outputName   = 'APPEND';
 OPTIONS.APPENDED.triallength  = OPTIONS.artifacttrllength;
 OPTIONS.APPENDED.saveData     = OPTIONS.saveData;
+
+%% Subject summary collection options
+OPTIONS.SUBJECTSUMMARY.outputFile = 'SubjectSummary.csv'; % saved in PATHS.SUMMARY
+OPTIONS.SUBJECTSUMMARY.pathsFcn   = OPTIONS.pathsScript;

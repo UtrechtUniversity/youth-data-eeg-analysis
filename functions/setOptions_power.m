@@ -99,3 +99,7 @@ OPTIONS.ROIPOWER.overwrite       = 'yes';
 OPTIONS.POWERSUMMARY.inputName  = 'POWER';
 OPTIONS.POWERSUMMARY.outputFile = 'power_summary.csv';  % saved in PATHS.SUMMARY
 OPTIONS.POWERSUMMARY.pathsFcn   = OPTIONS.pathsScript;
+
+%% Subject summary collection options
+OPTIONS.SUBJECTSUMMARY.outputFile = 'SubjectSummary.csv'; % saved in PATHS.SUMMARY
+OPTIONS.SUBJECTSUMMARY.pathsFcn   = OPTIONS.pathsScript;

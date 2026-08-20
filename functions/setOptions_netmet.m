@@ -173,3 +173,7 @@ OPTIONS.BCSUMMARY.inputName  = OPTIONS.BC.outputName;
 OPTIONS.BCSUMMARY.outputName = 'bc_summary';
 OPTIONS.BCSUMMARY.format     = 'both'; % 'csv' | 'mat' | 'both'
 OPTIONS.BCSUMMARY.pathsFcn   = OPTIONS.pathsScript;
+
+%% Subject summary collection options
+OPTIONS.SUBJECTSUMMARY.outputFile = 'SubjectSummary.csv'; % saved in PATHS.SUMMARY
+OPTIONS.SUBJECTSUMMARY.pathsFcn   = OPTIONS.pathsScript;
