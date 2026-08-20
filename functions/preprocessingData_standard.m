@@ -22,6 +22,7 @@ for iSubjects = startSubject:endSubject
         catch ME
             removingSubjects([], currSubject, ME.message);
         end
+        bv_syncSubjectSummary(currSubject);
 end
 
 %% CALCULATE ARTEFACTS IN PREPROC DATA
@@ -40,6 +41,7 @@ for iSubjects = startSubject:endSubject
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
+    bv_syncSubjectSummary(currSubject);
 end
 
 %% SET CHANNELS TO REMOVE
@@ -58,6 +60,7 @@ for iSubjects = startSubject:endSubject
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
+    bv_syncSubjectSummary(currSubject);
 end
 
 %% PREPROCESSING AGAIN WITH REREF AND WITHOUT REMOVED CHANNELS
@@ -76,6 +79,7 @@ for iSubjects = startSubject:endSubject
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
+    bv_syncSubjectSummary(currSubject);
 end
 
 %% CALCULATE ARTEFACTS IN EEG DATA WITHOUT POOR CHANNELS
@@ -95,6 +99,7 @@ for iSubjects = startSubject:endSubject
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
+    bv_syncSubjectSummary(currSubject);
 end
 
 %% REMOVE TRIALS
@@ -114,6 +119,7 @@ for iSubjects = startSubject:endSubject
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
+    bv_syncSubjectSummary(currSubject);
 end
 
 %% APPEND DATA
@@ -132,4 +138,5 @@ for iSubjects = startSubject:endSubject
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
+    bv_syncSubjectSummary(currSubject);
 end

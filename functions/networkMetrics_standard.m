@@ -22,6 +22,7 @@ for iSubjects = startSubject:endSubject
         mkdir(subjectdata.PATHS.NETMETDIR);
     end
     save(fullfile(subjectdata.PATHS.SUBJECTDIR, 'Subject.mat'), 'subjectdata');
+    bv_syncSubjectSummary(subjectFolderNames{iSubjects});
 end
 
 %% CALCULATE PLI CONNECTIVITY
@@ -30,11 +31,13 @@ clear OPTIONS; setOptionsNetmet
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
 for iSubjects = startSubject:endSubject
 
+    currSubject     = subjectFolderNames{iSubjects};
     cfg             = OPTIONS.PLICONNECTIVITY;
-    cfg.currSubject = subjectFolderNames{iSubjects};
+    cfg.currSubject = currSubject;
     cfg.quiet       = 'no';
 
     connectivity = bv_calculatePLI(cfg);
+    bv_syncSubjectSummary(currSubject);
 end
 
 %% CALCULATE FC STRENGTH
@@ -43,11 +46,13 @@ clear OPTIONS; setOptionsNetmet
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
 for iSubjects = startSubject:endSubject
 
+    currSubject     = subjectFolderNames{iSubjects};
     cfg             = OPTIONS.STRENGTH;
-    cfg.currSubject = subjectFolderNames{iSubjects};
+    cfg.currSubject = currSubject;
     cfg.quiet       = 'no';
 
     strength = bv_calculateStrength(cfg);
+    bv_syncSubjectSummary(currSubject);
 end
 
 %% COLLECT FC STRENGTH SUMMARY (cross-subject)
@@ -61,11 +66,13 @@ clear OPTIONS; setOptionsNetmet
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
 for iSubjects = startSubject:endSubject
 
+    currSubject     = subjectFolderNames{iSubjects};
     cfg             = OPTIONS.SWP;
-    cfg.currSubject = subjectFolderNames{iSubjects};
+    cfg.currSubject = currSubject;
     cfg.quiet       = 'no';
 
     swp = bv_calculateSWP(cfg);
+    bv_syncSubjectSummary(currSubject);
 end
 
 %% COLLECT SWP SUMMARY (cross-subject)
@@ -79,11 +86,13 @@ clear OPTIONS; setOptionsNetmet
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
 for iSubjects = startSubject:endSubject
 
+    currSubject     = subjectFolderNames{iSubjects};
     cfg             = OPTIONS.QMOD;
-    cfg.currSubject = subjectFolderNames{iSubjects};
+    cfg.currSubject = currSubject;
     cfg.quiet       = 'no';
 
     qmod = gr_calculateQModularity(cfg);
+    bv_syncSubjectSummary(currSubject);
 end
 
 %% COLLECT Q MODULARITY SUMMARY (cross-subject)
@@ -97,11 +106,13 @@ clear OPTIONS; setOptionsNetmet
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
 for iSubjects = startSubject:endSubject
 
+    currSubject     = subjectFolderNames{iSubjects};
     cfg             = OPTIONS.CLUSTERING;
-    cfg.currSubject = subjectFolderNames{iSubjects};
+    cfg.currSubject = currSubject;
     cfg.quiet       = 'no';
 
     clus = gr_calculateClusteringWs(cfg);
+    bv_syncSubjectSummary(currSubject);
 end
 
 %% COLLECT CLUSTERING SUMMARY (cross-subject)
@@ -115,11 +126,13 @@ clear OPTIONS; setOptionsNetmet
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
 for iSubjects = startSubject:endSubject
 
+    currSubject     = subjectFolderNames{iSubjects};
     cfg             = OPTIONS.PATHLENGTH;
-    cfg.currSubject = subjectFolderNames{iSubjects};
+    cfg.currSubject = currSubject;
     cfg.quiet       = 'no';
 
     pathlen = gr_calculatePathlengthWs(cfg);
+    bv_syncSubjectSummary(currSubject);
 end
 
 %% COLLECT PATH LENGTH SUMMARY (cross-subject)
@@ -133,11 +146,13 @@ clear OPTIONS; setOptionsNetmet
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
 for iSubjects = startSubject:endSubject
 
+    currSubject     = subjectFolderNames{iSubjects};
     cfg             = OPTIONS.BC;
-    cfg.currSubject = subjectFolderNames{iSubjects};
+    cfg.currSubject = currSubject;
     cfg.quiet       = 'no';
 
     bc = gr_calculateBetweennessCentrality(cfg);
+    bv_syncSubjectSummary(currSubject);
 end
 
 %% COLLECT BETWEENNESS CENTRALITY SUMMARY (cross-subject)
