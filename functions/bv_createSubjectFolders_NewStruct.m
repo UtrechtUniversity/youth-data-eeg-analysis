@@ -43,7 +43,11 @@ function bv_createSubjectFolders_NewStruct(cfg)
 %   cfg.pathsFcn        ' string ' m-file that sets PATHS and OPTIONS
 %                       (default: 'setPaths')
 %   cfg.overwrite       'yes'/'no' re-create subject folders that already
-%                       exist in SubjectSummary (default: 'no')
+%                       exist in SubjectSummary (default: 'no'). WARNING:
+%                       overwrite='no' hits bv_addSubjectToSubjectsummary,
+%                       which only exists under unused/ (not on the
+%                       MATLAB path) - currently broken/unreachable, since
+%                       every driver script hardcodes overwrite='yes'.
 %   cfg.prevAnalysis    ' string ' used with cfg.dataType = 'mat': label of
 %                       the previous analysis step (default: 'preproc')
 
@@ -176,10 +180,16 @@ for subjIndex = 1:length(files)
     subjectdata.PATHS.PREPROCDIR = preprocDir;
     subjectdata.PATHS.POWERDIR   = powerDir;
     subjectdata.PATHS.NETMETDIR  = netmetDir;
-    subjectdata.date = date;
+    subjectdata.preprocDate = date;
     subjectdata.removed       = false(1);
     subjectdata.removedDuring = '';
-    subjectdata.removedreason = '';
+    subjectdata.removedReason = '';
+
+    % reserved for the sliding-window epoching step, if/when one is added
+    % to the power-estimate stage; NaN until then, or for any subject
+    % that never reaches that step.
+    subjectdata.nEpochsPower      = NaN;
+    subjectdata.nCleanEpochsPower = NaN;
 
     if ~nameResolved
         save(fullfile(paths2SubjectFolder, 'Subject'), 'subjectdata');
@@ -223,7 +233,7 @@ for subjIndex = 1:length(files)
         subjectdata.PATHS.DATAFILE = dataFile;
         subjectdata.PATHS.HDRFILE  = hdrFile;
         [~, subjectdata.filename, ~] = fileparts(subjectdata.PATHS.DATAFILE);
-        [subjectdata.testdate, subjectdata.testtime] = bv_readOutDateAndTimeBdf(dataFile);
+        [subjectdata.testDate, subjectdata.testTime] = bv_readOutDateAndTimeBdf(dataFile);
     catch ME
         save(fullfile(paths2SubjectFolder, 'Subject'), 'subjectdata');
         removingSubjects(removingSubjectsCfg, subjectdata.subjectName, ME.message);
@@ -231,23 +241,34 @@ for subjIndex = 1:length(files)
         continue
     end
 
+    subjectdata = bv_orderSubjectFields(subjectdata);
+
     fprintf('\t saving Subject.mat...')
     save(fullfile(subjectdata.PATHS.SUBJECTDIR, 'Subject'), 'subjectdata');
     fprintf('done \n')
 
     if strcmpi(overwrite, 'no')
-        subjectdatasummary = bv_addSubjectToSubjectsummary(subjectdatasummary, subjectdata);
+        % NOTE: bv_addSubjectToSubjectsummary only exists under unused/,
+        % which setPaths.m does not add to the MATLAB path (only
+        % functions/ is added) - this branch hard-crashes with "Undefined
+        % function" if ever reached. Currently unreachable/dormant since
+        % every driver script hardcodes OPTIONS.CREATEFOLDERS.overwrite=
+        % 'yes'. Pre-existing bug, not introduced here; left as-is until
+        % the overwrite='no' path actually needs to work.
+        subjectdatasummary = bv_addSubjectToSubjectsummary(subjectdatasummary, bv_stripSummaryOnlyFields(subjectdata));
     else
         % index by nSubjects+1 (not subjIndex) so that files skipped via
         % continue above never leave gaps with subjectName = [] in the
         % struct array - those gaps corrupt every later
         % ismember(...subjectName) lookup against SubjectSummary.mat
-        subjectdatasummary(nSubjects + 1) = subjectdata;
+        subjectdatasummary(nSubjects + 1) = bv_stripSummaryOnlyFields(subjectdata);
     end
 
     clear subjectdata
     nSubjects = nSubjects + 1;
 end
+
+subjectdatasummary = bv_orderSubjectFields(subjectdatasummary);
 
 fprintf('\n\n saving SubjectSummary.mat...')
 save(fullfile(PATHS.SUMMARY, 'SubjectSummary'), 'subjectdatasummary')

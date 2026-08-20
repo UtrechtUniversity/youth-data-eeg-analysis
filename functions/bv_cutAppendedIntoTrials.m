@@ -118,7 +118,7 @@ subjectdata.nTrialsCleaned = length(data.trial);
 if strcmpi(saveData, 'yes')
     
     subjectdata.analysisOrder = bv_updateAnalysisOrder(subjectdata.analysisOrder, cfgIn);
-    bv_updateSubjectSummary([PATHS.SUMMARY filesep 'SubjectSummary.mat'], subjectdata)
+    bv_updateSubjectSummary([PATHS.SUMMARY filesep 'SubjectSummary.mat'], bv_stripSummaryOnlyFields(subjectdata))
     
     bv_saveData(subjectdata, data, outputStr);
 end
