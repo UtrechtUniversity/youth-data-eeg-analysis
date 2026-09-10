@@ -89,7 +89,7 @@ function [ data, subjectdata ] = bv_preprocResample(cfg)
 %   cfg.channels2remove = 'string': or {cell} with strings. Labels of
 %                           channels to be removed. If empty (''), channels
 %                           will be removed based on
-%                           subjectdata.channels2remove. In that case,
+%                           subjectdata.flaggedChannels. In that case,
 %                           make sure you run bv_removeChannels first
 %   cfg.interpolate     = 'yes/no': specifies whether missing channels need
 %                           to be interpolated (triangulation neighbors,
@@ -156,12 +156,16 @@ else
 end
 
 if ~hasdata % check whether data needs to be loaded from subject.mat file
-    
+
     eval(pathsFcn) % get paths necessary to run function
-    
+
     if ~quiet; disp(currSubject); end
     if strcmpi(overwrite, 'no') & strcmpi(saveData, 'yes') & ...
             exist(fullfile(PATHS.SUBJECTS, currSubject, 'preproc', [currSubject '_' upper(outputName) '.mat']), 'file')
+        % NOTE: this returns before subjectdata is ever (re)loaded, so the
+        % bv_syncSubjectSummary call right after this in the driver script
+        % just re-syncs whatever's already in SubjectSummary.mat - a
+        % known no-op/gap here, not something this branch addresses.
         if ~quiet
             fprintf('\t !!!%s already found, not overwriting ... \n', upper(outputName))
         end
@@ -176,20 +180,20 @@ if ~hasdata % check whether data needs to be loaded from subject.mat file
     catch
         error('Subject.mat file not found')
     end
-    
+
     if ~quiet; fprintf('\t Setting up for preprocessing ... '); end
-    
+
     hdrfile = subjectdata.PATHS.HDRFILE;
     dataset = subjectdata.PATHS.DATAFILE;
-    
+
     fid = fopen(dataset, 'r');
     ln1 = fgetl(fid);
     ln2 = fgetl(fid);
-    
+
     if ln2 == -1
         if ~quiet; fprintf('\n \t \t bdf file incomplete, removing subject and continueing ... \n'); end
         subjectdata.nTrialsPreproc = 0;
-        
+
         if ~quiet
             bv_saveData(subjectdata)
         else
@@ -204,7 +208,7 @@ if ~hasdata % check whether data needs to be loaded from subject.mat file
     end
     if ~quiet; fprintf('done! \n'); end
 else
-    
+
     if ~quiet; fprintf('done! \n'); end
 end
 
@@ -220,36 +224,14 @@ end
 
 removingChans = strcmpi(removechans, 'yes');
 if removingChans && ~isempty(channels2remove)
-    if isfield(subjectdata, 'channels2remove')
-        if ~isempty(subjectdata.channels2remove)
-            warning('\t overwriting subjectdata.channels2remove with given cfg.channels2remove \n')
+    if isfield(subjectdata, 'flaggedChannels')
+        if ~isempty(subjectdata.flaggedChannels)
+            warning('\t overwriting subjectdata.flaggedChannels with given cfg.channels2remove \n')
         end
     end
-    subjectdata.channels2remove = channels2remove;
+    subjectdata.flaggedChannels = channels2remove;
 end
 
-% If channels should be interpolated, but no channels are to be removed, no
-% new file will be created (compared to already existing file). Therefore,
-% skip this subject
-if strcmpi(interpolate, 'yes')
-    if isempty(subjectdata.channels2remove) & isfield(subjectdata.PATHS, 'PREPROC')
-        subjectdata.PATHS.(outputName) = subjectdata.PATHS.PREPROC;
-        if ~quiet; fprintf('\t no channels found to remove, continuing...'); end
-        evalc('[~,~, data] = bv_check4data(subjectdata.PATHS.SUBJECTDIR, ''PREPROC'');');
-        
-        if strcmpi(saveData, 'yes')
-            
-            if ~quiet
-                bv_saveData(subjectdata);              % save both data and subjectdata to the drive
-                bv_updateSubjectSummary([PATHS.SUMMARY filesep 'SubjectSummary'], subjectdata)
-            else
-                evalc('bv_saveData(subjectdata);');
-            end
-        end
-        
-        return
-    end
-end
 
 subjectdata.cfgs.(outputName) = cfg; % save used config file in subjectdata
 subjectdata.trialfun = trialfun;
@@ -259,8 +241,8 @@ if ~quiet; fprintf('\t loading in data ... '); end
 cfg = [];
 
 % only read in EEG data (without possible removed channels)
-if removingChans && isfield(subjectdata, 'channels2remove')
-    if ~isempty(subjectdata.channels2remove)
+if removingChans && isfield(subjectdata, 'flaggedChannels')
+    if ~isempty(subjectdata.flaggedChannels)
 
         layout = bv_getLayoutType(hdr);
 
@@ -269,12 +251,12 @@ if removingChans && isfield(subjectdata, 'channels2remove')
         cfg.method = 'triangulation';
         cfg.feedback = 'no';
         evalc('neighbours = ft_prepare_neighbours(cfg);');
-        
+
         if ~quiet; fprintf(['\n \t\t skipping following channel(s): ' ...
-            repmat('%s, ', 1,length(subjectdata.channels2remove))], subjectdata.channels2remove{:}); end
+            repmat('%s, ', 1,length(subjectdata.flaggedChannels))], subjectdata.flaggedChannels{:}); end
         cfg = [];
-        cfg.channel = cat(2, channels{:}, strcat('-',subjectdata.channels2remove'));
-        
+        cfg.channel = cat(2, channels{:}, strcat('-',subjectdata.flaggedChannels'));
+
     else
         cfg.channel = channels;
     end
@@ -317,16 +299,16 @@ end
 if ~quiet; fprintf('done! \n'); end
 
 if strcmpi(interpolate, 'yes')
-    if isfield(subjectdata, 'channels2remove')
-        if ~isempty(subjectdata.channels2remove)
+    if isfield(subjectdata, 'flaggedChannels')
+        if ~isempty(subjectdata.flaggedChannels)
             if ~quiet
                 fprintf(['\t the following channels will be interpolated ... ', ...
-                    repmat('%s, ',1, length(subjectdata.channels2remove))], subjectdata.channels2remove{:})
+                    repmat('%s, ',1, length(subjectdata.flaggedChannels))], subjectdata.flaggedChannels{:})
             end
             layout = bv_getLayoutType(hdr);
 
             cfg = [];
-            cfg.missingchannel = subjectdata.channels2remove';
+            cfg.missingchannel = subjectdata.flaggedChannels';
             cfg.method = interpMethod;
             cfg.neighbours = neighbours;
             cfg.layout = layout;
@@ -344,25 +326,26 @@ end
 
 % *** Resampling (if a resampleFs is given)
 if ~isempty(resampleFs)
-    
+
     if ~quiet; fprintf('\t Resampling data from %s to %s ... ', num2str(data.fsample), num2str(resampleFs)); end
     cfg = [];
     cfg.resamplefs  = resampleFs;
     % cfg.detrend     = 'yes';
     evalc('data = ft_resampledata(cfg, data);');
-    
+    subjectdata.resampleFs = resampleFs;
+
     if ~quiet; fprintf('done! \n'); end
 end
 
 % *** Filtering data (if a hpfreq, lpfreq, or notchfreq is given).
 % See BV_FILTEREEGDATA for more info
 if ~(isempty(hpfreq) && isempty(lpfreq) && isempty(notchfreq))
-    
+
     cfg.hpfreq      = hpfreq;
     cfg.lpfreq      = lpfreq;
     cfg.notchfreq   = notchfreq;
     cfg.filttype    = filttype;
-    
+
     if ~quiet
         data = bv_filterEEGdata(cfg, data);
     else
@@ -373,35 +356,37 @@ end
 
 if strcmpi(reref, 'yes')
     if ~quiet; fprintf('\t rereferencing to %s electrode ... ', refelec); end
-    
+
     cfg = [];
     cfg.reref = 'yes';
     cfg.refchannel = refelec;
     cfg.refmethod = refmethod;
     evalc('data = ft_preprocessing(cfg, data);');
-    
+    subjectdata.refElec = refelec;
+    subjectdata.refMethod = refmethod;
+
     if ~quiet; fprintf('done!\n'); end
 end
 
 wavelet_thresholding = strcmpi(waveletThresh, 'yes');
 if wavelet_thresholding
     if ~quiet; fprintf('\t Wavelet thresholding, based on HAPPE_v3 ...'); end
-    
+
     wavFam = 'bior4.4' ;
     if data.fsample > 500
         wavLvl = 10;
-    elseif data.fsample > 250 && data.fsample <= 500 
+    elseif data.fsample > 250 && data.fsample <= 500
         wavLvl = 9;
-    elseif data.fsample <=250 
+    elseif data.fsample <=250
         wavLvl = 8;
     end
-    
+
     ThresholdRule = 'Hard' ;
-    
+
     artfcs = wdenoise(data.trial{1}', wavLvl, ...
         'Wavelet', wavFam, 'DenoisingMethod', 'Bayes', 'ThresholdRule', ...
         ThresholdRule, 'NoiseEstimate', 'LevelDependent')' ;
-    
+
     preEEG = reshape(data.trial{1}, size(data.trial{1},1), []) ;
     postEEG = preEEG - artfcs;
     data.trial{1} = postEEG;
@@ -417,9 +402,9 @@ end
 % redefine the trialstructure of the data file
 if ~isempty(trialfun)
     if ~quiet; fprintf('\t Redefining trialstructure based on %s ... \n', trialfun); end
-    
+
     subjectdata.trialfun = trialfun;
-    
+
     cfg = [];
     cfg.dataset = dataset;
     cfg.headerfile = hdrfile;
@@ -431,9 +416,9 @@ if ~isempty(trialfun)
     else
         cfg.Fs = resampleFs;
     end
-    
+
     eval(['[trl] = ' trialfun '(cfg);'])
-    
+
     if isempty(trl)
         if ~quiet; fprintf('\n \t \t no trials found, removing subject and continuing ... \n'); end
         subjectdata.nTrialsPreproc = 0;
@@ -450,7 +435,7 @@ if ~isempty(trialfun)
     else
         evalc('cfg = ft_definetrial(cfg);');
     end
-            
+
     if~quiet
         trlCount = bv_showTrialAmount(cfg);
     else
@@ -458,8 +443,8 @@ if ~isempty(trialfun)
     end
     subjectdata.nTrialsPreproc = sum(trlCount);
     evalc('data = ft_redefinetrial(cfg, data);');
-    
-    
+
+
 end
 
 % saving data

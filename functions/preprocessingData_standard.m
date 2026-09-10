@@ -22,6 +22,7 @@ for iSubjects = startSubject:endSubject
         catch ME
             removingSubjects([], currSubject, ME.message);
         end
+        bv_syncSubjectSummary(currSubject);
 end
 
 %% CALCULATE ARTEFACTS IN PREPROC DATA
@@ -40,6 +41,7 @@ for iSubjects = startSubject:endSubject
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
+    bv_syncSubjectSummary(currSubject);
 end
 
 %% SET CHANNELS TO REMOVE
@@ -58,6 +60,7 @@ for iSubjects = startSubject:endSubject
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
+    bv_syncSubjectSummary(currSubject);
 end
 
 %% PREPROCESSING AGAIN WITH REREF AND WITHOUT REMOVED CHANNELS
@@ -76,6 +79,7 @@ for iSubjects = startSubject:endSubject
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
+    bv_syncSubjectSummary(currSubject);
 end
 
 %% CALCULATE ARTEFACTS IN EEG DATA WITHOUT POOR CHANNELS
@@ -95,6 +99,7 @@ for iSubjects = startSubject:endSubject
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
+    bv_syncSubjectSummary(currSubject);
 end
 
 %% REMOVE TRIALS
@@ -114,6 +119,7 @@ for iSubjects = startSubject:endSubject
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
+    bv_syncSubjectSummary(currSubject);
 end
 
 %% APPEND DATA
@@ -132,22 +138,10 @@ for iSubjects = startSubject:endSubject
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
+    bv_syncSubjectSummary(currSubject);
 end
 
-%% Calculate PLI connectivity
+%% COLLECT SUBJECT SUMMARY (cross-subject CSV)
 clear OPTIONS; setOptions
 
-[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
-for iSubjects = startSubject:endSubject
-
-    currSubject     = subjectFolderNames{iSubjects};
-    cfg             = OPTIONS.PLICONNECTIVITY;
-    cfg.currSubject = currSubject;
-    cfg.quiet       = 'no';
-
-    try
-        [ connectivity ] = bv_calculatePLI(cfg);
-    catch ME
-        removingSubjects([], currSubject, ME.message);
-    end
-end
+bv_collectSubjectSummary(OPTIONS.SUBJECTSUMMARY);

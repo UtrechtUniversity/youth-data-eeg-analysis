@@ -79,6 +79,8 @@ overwrite       = ft_getopt(cfg, 'overwrite', 'no');
 quiet           = ft_getopt(cfg, 'quiet', 'no');
 analyses        = ft_getopt(cfg, 'analyses');
 
+cfgIn = cfg;
+
 if strcmpi(analyses, 'all')
     analyses = {'var', 'kurtosis', 'range', 'flatline', 'abs', 'jump'};
 end
@@ -123,7 +125,8 @@ if nargin < 2
     else
         evalc('[~, ~, data] = bv_check4data(subjectFolderPath, inputName);');
     end
-    
+
+    subjectdata.cfgs.(outputName) = cfgIn;
 else
     if isfield(cfg, 'currSubject')
         if isempty(pathsFcn)

@@ -14,7 +14,9 @@ brain network during infancy, in the context of COVID-19 related policy effects.
   - Optimization Toolbox
   - Signal Processing Toolbox
   - Statistics and Machine Learning Toolbox
+- Small World Propensity function[^3] (included)
 - Fieldtrip (tested on revision fcee93fc2, included with the pipeline)
+- Network Community Toolbox[^4] (included in FieldTrip)
 - YOUth Data
 
 > [!NOTE]
@@ -42,18 +44,12 @@ To get started, simply download (or clone) this GitHub repository and unzip to a
 > Otherwise, MATLAB will run into errors.
 
 > [!WARNING]
-> Only analyse RAW files from the 5-months, 10-months and 3-years old waves
-> of the YOUth Cohort. Putting any other RAW files in the RAW folder might
+> The pipeline reproduces the original work that analysed RAW files from 
+> the 5-months and 10-months old waves of the YOUth Cohort.
+> Putting any other RAW files in the RAW folder might
 > cause the pipeline to run into an error.
-
-## 🗺️ Roadmap
-
-🔵 In progress | 🟢 Upcoming | 🟡 Planned | 🔴 Abandoned
-
-- 🔵 function descriptions
-- 🟢 Windows testing
-- 🟡 documentation website
-- 🟡 parallel preprocessing
+> (However, the pipeline was successfully tested with data from the 3-years and
+> 6-years old waves.)
 
 ## 📄 License
 
@@ -64,3 +60,7 @@ This project is licensed under the GNU General Public License v3.0 — see the [
 [^1]: Onland-Moret, N. C., Buizer-Voskamp, J. E., Albers, M. E., Brouwer, R. M., Buimer, E. E., Hessels, R. S., De Heus, R., Huijding, J., Junge, C. M., Mandl, R. C., Pas, P., Vink, M., Van Der Wal, J. J., Pol, H. E. H., & Kemner, C. (2020). The YOUth study: Rationale, design, and study procedures. Developmental Cognitive Neuroscience, 46, 100868. <https://doi.org/10.1016/j.dcn.2020.100868>
 
 [^2]: Van der Velde, B., White, T., & Kemner, C. (2021). The emergence of a theta social brain network during infancy. NeuroImage, 240, 118298. <https://doi.org/10.1016/j.neuroimage.2021.118298>
+
+[^3]: Muldoon, S. F., Bridgeford, E. W., & Bassett, D. S. (2015) Small-World Propensity in Weighted, Real-World Networks. Neurons and Cognition. <https://doi.org/10.48550/arXiv.1505.02194> 
+
+[^4]: Network Community Toolbox. (n.d.). [Computer software]. <http://commdetect.weebly.com/>

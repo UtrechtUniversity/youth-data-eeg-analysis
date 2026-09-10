@@ -1,7 +1,7 @@
 % This is an overview script of all the preprocessing steps needed taken to
 % calculate the networks in EEG data. This is the version of the script
 % that doesn't save intermediate steps. This is generally not
-% recommendended, but if you have limited space on your harddrive, this is 
+% recommendended, but if you have limited space on your harddrive, this is
 % the script to use.
 %
 % Written by Bauke van der Velde, 2018-2024
@@ -77,22 +77,10 @@ for iSubjects = 1:length(subjectFolderNames)
         cfg             = OPTIONS.APPENDED;
         cfg.currSubject = currSubject;
         cfg.quiet       = 'yes';
-        cfg.saveData    = 'no';
+        cfg.saveData    = 'yes';
 
         data = bv_appendfieldtripdata(cfg, data);
-
-
-        %% Calculate PLI connectivity
-
-        cfg             = OPTIONS.PLICONNECTIVITY;
-        cfg.currSubject = currSubject;
-        cfg.quiet       = 'yes';
-        cfg.saveData    = 'yes';
-        cfg.pathsFcn    = 'setPaths';
-
-        [ connectivity ] = bv_calculatePLI(cfg, data);
     catch
         warning([subjectFolderNames{iSubjects}, ': %s'], lasterr)
     end
 end
-

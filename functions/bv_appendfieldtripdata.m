@@ -78,6 +78,8 @@ if nargin < 2
     else
         evalc('[subjectdata, ~, dataOld] = bv_check4data(subjectFolderPath, inputName);');
     end
+
+    subjectdata.cfgs.(outputName) = cfgIn;
 else
     saveData = 'no';
 end

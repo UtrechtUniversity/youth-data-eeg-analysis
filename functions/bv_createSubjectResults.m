@@ -16,46 +16,17 @@ for i = 1:length(subjectdirflags)
     lng = printPercDone(length(subjectdirflags), i);
     if i ==1
         evalc('subjectdatasummary = bv_check4data([subjectdirflags(1).folder filesep subjectdirflags(1).name]);');
+        subjectdatasummary = bv_stripSummaryOnlyFields(subjectdatasummary);
     else
         evalc('subjectdata = bv_check4data([subjectdirflags(i).folder filesep subjectdirflags(i).name]);');
-        subjectdatafields = fields(subjectdata);
-        subjectdatasummaryfields = fields(subjectdatasummary);
-        missingFieldsSummary = subjectdatafields(find(not(ismember(subjectdatafields, ...
-            subjectdatasummaryfields))));
-        
-        if ~isempty(missingFieldsSummary)
-            for j = missingFieldsSummary'
-                switch class(subjectdata.(j{:}))
-                    case 'struct'
-                        [subjectdatasummary(1:end).(j{:})] = deal(struct);
-                    case 'double'
-                        [subjectdatasummary(1:end).(j{:})] = deal(NaN);
-                    case 'char'
-                        [subjectdatasummary(1:end).(j{:})] = deal('');
-                    case 'cell'
-                        [subjectdatasummary(1:end).(j{:})] = deal(cell(0));
-                end
-            end
-        end
-        
-        missingFieldsSubjectdata = subjectdatasummaryfields(find(not(ismember(subjectdatasummaryfields, ...
-            subjectdatafields))));
-        
-        if ~isempty(missingFieldsSubjectdata)
-            for j = missingFieldsSubjectdata'
-                switch class(subjectdatasummary(1).(j{:}))
-                    case 'struct'
-                        subjectdata.(j{:}) = struct;
-                    case 'double'
-                        subjectdata.(j{:}) = NaN;
-                    case 'char'
-                        subjectdata.(j{:}) = '';
-                    case 'cell'
-                        subjectdata.(j{:}) = cell(0);
-                end
-            end
-        end
-        
+        subjectdata = bv_stripSummaryOnlyFields(subjectdata);
+
+        % reconcile field names (top-level and nested, e.g. cfgs/PATHS -
+        % which pick up different sub-fields per subject depending on
+        % which pipeline steps that subject reached) so struct2table
+        % below doesn't fail as soon as two subjects' fields don't match.
+        [subjectdatasummary(1:i-1), subjectdata] = bv_reconcileSummaryArray(subjectdatasummary(1:i-1), subjectdata);
+
         subjectdatasummary(i) = subjectdata;
         
     end
@@ -63,6 +34,7 @@ for i = 1:length(subjectdirflags)
 end
 fprintf('done! \n')
 % end
+subjectdatasummary = bv_orderSubjectFields(subjectdatasummary);
 subjectdatasummary = struct2table(subjectdatasummary);
 
 if nargin > 0

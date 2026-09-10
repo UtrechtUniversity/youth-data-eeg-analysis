@@ -16,6 +16,8 @@ if nargin > 1
     
 end
 
+subjectdata = bv_orderSubjectFields(subjectdata);
+
 fprintf('\t saving Subject.mat ... ')
 save([subjectdata.PATHS.SUBJECTDIR filesep 'Subject.mat'], 'subjectdata')
 fprintf('done! \n');

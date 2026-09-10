@@ -1,48 +1,28 @@
 function bv_updateSubjectSummary(path2subjectsummary, subjectdata)
+% bv_updateSubjectSummary merges one subject's Subject.mat data into the
+% shared SubjectSummary.mat struct array, keyed on subjectdata.subjectName.
+%
+% Field reconciliation (both top-level and nested, e.g. subjectdata.cfgs)
+% is delegated to bv_reconcileSummaryArray, which keeps subjectdata and
+% every existing row consistent in the way MATLAB struct arrays actually
+% require (see that function for why top-level and nested fields need
+% different handling).
 
 load(path2subjectsummary, 'subjectdatasummary')
-subjectdatafields = fields(subjectdata);
-subjectdatasummaryfields = fields(subjectdatasummary);
-missingFieldsSummary = subjectdatafields(find(not(ismember(subjectdatafields, ...
-    subjectdatasummaryfields))));
 
-if ~isempty(missingFieldsSummary)
-    for i = missingFieldsSummary'
-        switch class(subjectdata.(i{:}))
-            case 'struct'
-                [subjectdatasummary(1:end).(i{:})] = deal(struct);
-            case 'double'
-                [subjectdatasummary(1:end).(i{:})] = deal(NaN);
-            case 'char'
-                [subjectdatasummary(1:end).(i{:})] = deal('');
-            case 'cell'
-                [subjectdatasummary(1:end).(i{:})] = deal(cell(0));
-        end
-    end
-end
-
-missingFieldsSubjectdata = subjectdatasummaryfields(find(not(ismember(subjectdatasummaryfields, ...
-    subjectdatafields))));
-
-if ~isempty(missingFieldsSubjectdata)
-    for i = missingFieldsSubjectdata'
-        switch class(subjectdatasummary(1).(i{:}))
-            case 'struct'
-                subjectdata.(i{:}) = struct;
-            case 'double'
-                subjectdata.(i{:}) = NaN;
-            case 'char'
-                subjectdata.(i{:}) = '';
-            case 'cell'
-                subjectdata.(i{:}) = cell(0);
-        end
-    end
-end
+[subjectdatasummary, subjectdata] = bv_reconcileSummaryArray(subjectdatasummary, subjectdata);
 
 subjectIndx = find(ismember({subjectdatasummary.subjectName}, ...
     subjectdata.subjectName));
 
-subjectdatasummary(subjectIndx) = subjectdata;
+if isempty(subjectIndx)
+    fprintf('\t %s not found in SubjectSummary, appending as a new row ... \n', subjectdata.subjectName)
+    subjectdatasummary(end+1) = subjectdata;
+else
+    subjectdatasummary(subjectIndx) = subjectdata;
+end
+
+subjectdatasummary = bv_orderSubjectFields(subjectdatasummary);
 
 fprintf('\t saving SubjectSummary.mat...')
 save(path2subjectsummary, 'subjectdatasummary')
