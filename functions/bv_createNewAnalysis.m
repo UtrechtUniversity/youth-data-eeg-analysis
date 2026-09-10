@@ -177,6 +177,32 @@ else
     end
 end
 
+fprintf('\t')
+if ~overwrite && exist([PATHS.CURRANALYSIS filesep 'setOptionsNetmet.m'], 'file')
+    setNetmetOptionsExist = true(1);
+    fprintf('setOptionsNetmet.m already exists, not overwriting \n')
+else
+    setNetmetOptionsExist = copyfile(which('setOptions_netmet'), [PATHS.CURRANALYSIS filesep 'setOptionsNetmet.m']);
+    if setNetmetOptionsExist
+        fprintf('setOptionsNetmet.m created \n')
+    else
+        fprintf('setOptionsNetmet.m creation failed, please check \n')
+    end
+end
+
+fprintf('\t')
+if ~overwrite && exist([PATHS.CURRANALYSIS filesep 'networkMetrics.m'], 'file')
+    networkMetricsExist = true(1);
+    fprintf('networkMetrics.m already exists, not overwriting \n')
+else
+    [networkMetricsExist, msg] = copyfile(which('networkMetrics_standard'), [PATHS.CURRANALYSIS filesep 'networkMetrics.m']);
+    if networkMetricsExist
+        fprintf('networkMetrics.m created \n')
+    else
+        fprintf('networkMetrics.m not created with following warning: \n\t\t %s\n', msg)
+    end
+end
+
 fprintf('create log: \n')
 if ~overwrite && exist([PATHS.CURRANALYSIS filesep 'log.txt'], 'file')
     logExist = true(1);
@@ -187,7 +213,7 @@ else
 end
 
 fprintf('\n')
-if setPathExist && setOptionsExist && preprocessExist && logExist && setPowerOptionsExist && powerEstimatesExist
+if setPathExist && setOptionsExist && preprocessExist && logExist && setPowerOptionsExist && powerEstimatesExist && setNetmetOptionsExist && networkMetricsExist
     fprintf('function finished with no problems !\n')
 else
     warning('Function finished with (several) warnings, please check')

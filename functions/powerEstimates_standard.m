@@ -59,11 +59,13 @@ clear OPTIONS; setOptionsPower
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
 for iSubjects = startSubject:endSubject
 
+    currSubject     = subjectFolderNames{iSubjects};
     cfg             = OPTIONS.FREQUENCY;
-    cfg.currSubject = subjectFolderNames{iSubjects};
+    cfg.currSubject = currSubject;
     cfg.quiet       = 'no';
 
     freq = bv_calculateFrequency(cfg);
+    bv_syncSubjectSummary(currSubject);
 end
 
 %% EXTRACT ROI POWER
@@ -72,14 +74,21 @@ clear OPTIONS; setOptionsPower
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
 for iSubjects = startSubject:endSubject
 
+    currSubject     = subjectFolderNames{iSubjects};
     cfg             = OPTIONS.ROIPOWER;
-    cfg.currSubject = subjectFolderNames{iSubjects};
+    cfg.currSubject = currSubject;
     cfg.quiet       = 'no';
 
     power = bv_extractROIPower(cfg);
+    bv_syncSubjectSummary(currSubject);
 end
 
 %% COLLECT POWER SUMMARY (cross-subject CSV)
 clear OPTIONS; setOptionsPower
 
 bv_collectPowerSummary(OPTIONS.POWERSUMMARY);
+
+%% COLLECT SUBJECT SUMMARY (cross-subject CSV)
+clear OPTIONS; setOptionsPower
+
+bv_collectSubjectSummary(OPTIONS.SUBJECTSUMMARY);

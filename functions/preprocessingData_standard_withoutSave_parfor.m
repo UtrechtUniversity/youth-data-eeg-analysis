@@ -89,20 +89,9 @@ parfor(iSubjects = 1:length(subjectFolderNames),7)
         cfg             = OPTIONS.APPENDED;
         cfg.currSubject = currSubject;
         cfg.quiet       = 'yes';
-        cfg.saveData    = 'no';
+        cfg.saveData    = 'yes';
 
         data = bv_appendfieldtripdata(cfg, data);
-
-
-        %% Calculate PLI connectivity
-
-        cfg             = OPTIONS.PLICONNECTIVITY;
-        cfg.currSubject = currSubject;
-        cfg.quiet       = 'yes';
-        cfg.saveData    = 'yes';
-        cfg.pathsFcn    = 'setPaths';
-
-        [ connectivity ] = bv_calculatePLI(cfg, data);
     catch
         warning([subjectFolderNames{iSubjects}, ': %s'], lasterr)
     end

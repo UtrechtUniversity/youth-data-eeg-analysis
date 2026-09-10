@@ -19,12 +19,12 @@ if isempty(lastCalled)
 else
     subjectdata.removedDuring = lastCalled(1).name;
 end
-subjectdata.removedreason = reason;
+subjectdata.removedReason = reason;
 
 evalc('bv_saveData(subjectdata);');
 
-if exist([PATHS.SUMMARY filesep 'SubjectSummary'], 'file')
-    bv_updateSubjectSummary([PATHS.SUMMARY filesep 'SubjectSummary'], subjectdata)
+if exist([PATHS.SUMMARY filesep 'SubjectSummary.mat'], 'file')
+    bv_updateSubjectSummary([PATHS.SUMMARY filesep 'SubjectSummary'], bv_stripSummaryOnlyFields(subjectdata))
 end
 subjectdata.PATHS.SUBJECTDIR = [PATHS.REMOVED filesep currSubject];
 

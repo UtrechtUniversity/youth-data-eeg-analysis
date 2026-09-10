@@ -158,26 +158,42 @@ allOut = any(out,3);
 
 % badchannel calculation
 badchans = data.label(((sum(sum(out,3)>0,2) / expectedtrials) * 100 ) > maxpercbad);
-subjectdata.channels2remove = badchans;
-subjectdata.flatchannels = ...
+subjectdata.flaggedChannels = badchans;
+subjectdata.flatChannels = ...
     data.label(((sum(sum(out(:,:, ...
     contains(limFields, 'flat')),3)>0,2) / expectedtrials) * 100 ) > ...
     maxpercbad);
-subjectdata.noisychannels = ...
+subjectdata.noisyChannels = ...
     data.label(((sum(sum(out(:,:, ...
     not(contains(limFields, 'flat'))),3)>0,2) / expectedtrials) * 100 ) > ...
     maxpercbad);
+subjectdata.nChannels = length(data.label);
+subjectdata.interpolatedChannels = cell(0);
 
-if length(subjectdata.channels2remove) > maxbadchans
+if length(subjectdata.flaggedChannels) > maxbadchans
+    % removingSubjects reloads subjectdata fresh from Subject.mat, so the
+    % channel-list fields just set above (flaggedChannels/flatChannels/
+    % noisyChannels/nChannels) need to be on disk first, or they're lost -
+    % this subject never reaches the bv_saveData call at the bottom of
+    % this function otherwise.
+    if ~quiet
+        bv_saveData(subjectdata);
+    else
+        evalc('bv_saveData(subjectdata);');
+    end
     removingSubjects([], currSubject, 'too many noisy channels')
     data = [];
     return
 end
 
-if not(isempty(subjectdata.channels2remove))
+if not(isempty(subjectdata.flaggedChannels))
     if ~quiet; fprintf(['\t \t bad channels detected: ' repmat('%s,', 1, length(badchans)) '\n'], badchans{:}); end
     
-    if length(subjectdata.channels2remove) > maxbadchans
+    % unreachable: the identical check above (~line 173) already returns
+    % whenever this condition holds, so execution never reaches here with
+    % length(flaggedChannels) > maxbadchans. Pre-existing dead code, left
+    % as-is/harmless.
+    if length(subjectdata.flaggedChannels) > maxbadchans
         removingSubjects([], currSubject, 'too many noisy channels')
         data = [];
         return
@@ -195,11 +211,12 @@ if not(isempty(subjectdata.channels2remove))
         evalc('neighbours = ft_prepare_neighbours(cfg, data);');
         
         cfg = [];
-        cfg.missingchannel = subjectdata.channels2remove';
+        cfg.missingchannel = subjectdata.flaggedChannels';
         cfg.method = 'weighted';
         cfg.neighbours = neighbours;
         cfg.layout = 'biosemi32.lay';
         evalc('data = ft_channelrepair(cfg, data);');
+        subjectdata.interpolatedChannels = subjectdata.flaggedChannels;
         if ~quiet; fprintf('done! \n'); end
     else
         if ~quiet; fprintf('\t added to subjectdata struct \n'); end

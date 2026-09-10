@@ -1,6 +1,8 @@
 function data = bv_cleanData(cfg, data, artefactdef)
-% bv_cleanData removes artifact-ridden trials and creates clean data file.
-% Adds clean trial sample info to subjectdata (subjectdata.cleanSampleInfo)
+% bv_cleanData removes artifact-ridden windows and creates a clean data
+% file. Records subjectdata.nEpochsArtefact (windows evaluated) and
+% subjectdata.nCleanEpochsArtefact (windows that survived), plus
+% subjectdata.cleanSampleInfo (sample ranges of the surviving windows).
 %
 % Use as
 %   [data] = bv_cleanData(cfg)
@@ -19,13 +21,13 @@ function data = bv_cleanData(cfg, data, artefactdef)
 %                       repaired channels)
 %
 % the following fields are required in the cfg variable
-%   cfg.lims                = . struct . with limits in number for values 
-%                               found in the artefacts struct. Possible 
-%                               fields: 'kurtosis', 'variance', 'jump', 
-%                               'abs', 'range', 'flatline'. Example 
+%   cfg.lims                = . struct . with limits in number for values
+%                               found in the artefacts struct. Possible
+%                               fields: 'kurtosis', 'variance', 'jump',
+%                               'abs', 'range', 'flatline'. Example
 %                               (cfg.lims.kurtosis = 7)
 %   cfg.calculateDataloss   = 'yes/no'. Set to 'yes' if data loss
-%                               percentage should be calculated and added 
+%                               percentage should be calculated and added
 %                               to subjectdata. Also add cfg.expectedtrials
 %                               (default: 'no')
 %
@@ -35,19 +37,19 @@ function data = bv_cleanData(cfg, data, artefactdef)
 %                           necessary paths to run this function (default:
 %                           'setPaths').
 %   cfg.currSubject     = 'string': subject folder name to be analyzed
-%   cfg.inputName       = 'string': name of previous analysis to be used 
-%                           for this function, as in 
+%   cfg.inputName       = 'string': name of previous analysis to be used
+%                           for this function, as in
 %                           subjectdata.PATHS.(prevAnalysis)
-%   cfg.artefactData    = 'string': name of artefact data to be used for 
+%   cfg.artefactData    = 'string': name of artefact data to be used for
 %                           this function, as in
 %                           subjectdata.PATHS.(artefactData)
-%   cfg.saveData        = 'yes/no': specifies whether subjectdata needs to 
+%   cfg.saveData        = 'yes/no': specifies whether subjectdata needs to
 %                           be saved to personal folder
-%   cfg.saveCleanData   = 'yes/no': specifies whether subjectdata needs to 
+%   cfg.saveCleanData   = 'yes/no': specifies whether subjectdata needs to
 %                           be saved to personal folder
 %   cfg.overwrite       = 'yes/no': set to 'yes' if data is allowed to be
 %                           overwritten (default: 'no')
-% 
+%
 % the following fields are required if cleaned data is saved
 %   cfg.outputName      = 'string': name for output file. Output will
 %                           be called (currSubject)_(cfg.outputName).mat
@@ -72,6 +74,7 @@ outputName          = ft_getopt(cfg, 'outputName');
 artefactData        = ft_getopt(cfg, 'artefactData');
 saveData            = ft_getopt(cfg, 'saveData');
 calculateDataloss   = ft_getopt(cfg, 'calculateDataloss', 'no');
+dataLossLabel       = ft_getopt(cfg, 'dataLossLabel', 'dataLoss');
 expectedtrials      = ft_getopt(cfg, 'expectedtrials');
 saveCleanData       = ft_getopt(cfg, 'saveCleanData');
 quiet               = ft_getopt(cfg, 'quiet', 'no');
@@ -96,7 +99,7 @@ if nargin < 2 % data loading
     else
         eval(pathsFcn)
     end
-    
+
     subjectFolderPath = [PATHS.SUBJECTS filesep currSubject];
     if strcmpi(overwrite, 'no') & strcmpi(saveCleanData, 'yes') & ...
             exist([subjectFolderPath filesep currSubject '_' upper(outputName) '.mat'], 'file')
@@ -106,14 +109,14 @@ if nargin < 2 % data loading
         data = [];
         return
     end
-    
+
     if ~quiet
         disp(currSubject);
         [subjectdata, ~, data, artefactdef] = bv_check4data(subjectFolderPath, inputName, artefactData);
     else
         evalc('[subjectdata, ~, data, artefactdef] = bv_check4data(subjectFolderPath, inputName, artefactData);');
     end
-    
+
     subjectdata.cfgs.(outputName) = cfg;
 elseif isfield(cfg, 'currSubject')
     if isempty(pathsFcn)
@@ -138,10 +141,15 @@ end
 limFields = fieldnames(lims);
 for i = 1:length(limFields)
     cField = limFields{i};
-    
+
     out(:,:,i) = artefactdef.(cField).levels > lims.(cField);
-    
+
 end
+
+% number of artefact-detection windows this subject was evaluated on
+% (see ARTFCTPREPROC/ARTFCTRMCHANNELS's cutintrials/triallength options;
+% nCleanEpochsArtefact below records how many survived)
+subjectdata.nEpochsArtefact = size(artefactdef.sampleinfo, 1);
 
 % dataloss calculation
 if strcmpi(calculateDataloss, 'yes')
@@ -170,6 +178,7 @@ cfg.trl(:,4) = data.trialinfo;
 trlCount = bv_showTrialAmount(cfg);
 
 subjectdata.cleanSampleInfo = artefactdef.sampleinfo(goodTrialIndx,:);
+subjectdata.nCleanEpochsArtefact = length(goodTrialIndx);
 
 if strcmpi(saveData, 'yes')
     if ~quiet
@@ -184,7 +193,3 @@ elseif strcmpi(saveSubjectData, 'yes')
         evalc('bv_saveData(subjectdata);');
     end
 end
-
-
-
-
