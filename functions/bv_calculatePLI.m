@@ -14,13 +14,15 @@ function [ connectivity ] = bv_calculatePLI(cfg, data)
 %         Defaults to ``'all'``.
 %     cfg.condition (str, optional): Condition codes to include.
 %         Defaults to ``'all'``.
-%     cfg.freqLabel (cell array of str, optional): Frequency band labels.
-%         Defaults to ``{'delta', 'theta', 'alpha1', 'alpha2', 'beta',
-%         'gamma1', 'gamma2'}``.
-%     cfg.freqRng (cell array of numeric, optional): Frequency ranges in Hz,
-%         one entry per label in ``cfg.freqLabel``. Defaults to
-%         ``{[0.2 2.9], [3 5.9], [6 8.9], [9 11.9], [12 25], [25 45],
-%         [55 70]}``.
+%     cfg.freqBands (struct, optional): Fields are band labels, values are
+%         ``[low high]`` Hz ranges used to band-pass filter the continuous
+%         signal before PLI is computed for that band (matching the
+%         cfg.freqBands convention used by bv_extractROIPower). Defaults to
+%         the same bands used by the power-estimates steps: delta, theta,
+%         alpha, beta, gamma, infantTheta, infantAlpha, total. Band order
+%         (and therefore column order downstream) follows
+%         fieldnames(cfg.freqBands), i.e. the order the fields were
+%         assigned in.
 %     cfg.preprocOptions (struct, optional): FieldTrip ``cfg`` struct
 %         passed to ``bv_preprocResample`` before PLI calculation.
 %         Defaults to ``[]``.
@@ -45,8 +47,9 @@ function [ connectivity ] = bv_calculatePLI(cfg, data)
 %     connectivity (struct): PLI connectivity structure with fields
 %         ``plispctrm`` (chan x chan x freq, or chan x chan x trial x freq
 %         when ``cfg.keeptrials`` is ``'yes'``), ``dimord``, ``freq``,
-%         ``freqRng``, ``label``, and ``trialinfo``. Returns empty (``[]``)
-%         if output already exists and ``cfg.overwrite`` is ``'no'``.
+%         ``freqRng``, ``freqBands``, ``label``, and ``trialinfo``. Returns
+%         empty (``[]``) if output already exists and ``cfg.overwrite`` is
+%         ``'no'``.
 %
 % Example:
 %     Calculate PLI for the theta band and save to disk:
@@ -57,12 +60,13 @@ function [ connectivity ] = bv_calculatePLI(cfg, data)
 %     cfg.inputName   = 'CLEANED';
 %     cfg.outputName  = 'PLI_THETA';
 %     cfg.saveData    = 'yes';
-%     cfg.freqLabel   = {'theta'};
-%     cfg.freqRng     = {[3 5.9]};
+%     cfg.freqBands.theta = [4 7];
 %     connectivity = bv_calculatePLI(cfg);
 %     ```
 
 %% get options
+ntrials         = ft_getopt(cfg, 'ntrials','all');
+condition       = ft_getopt(cfg, 'condition', 'all');
 currSubject     = ft_getopt(cfg, 'currSubject');
 inputName       = ft_getopt(cfg, 'inputName');
 saveData        = ft_getopt(cfg, 'saveData', 'no');

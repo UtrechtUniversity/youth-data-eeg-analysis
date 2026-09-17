@@ -22,13 +22,18 @@ function data = bv_cleanData(cfg, data, artefactdef)
 %     cfg.calculateDataloss (str, optional): Whether to compute and store
 %         the percentage of lost data in subjectdata (``'yes'`` or
 %         ``'no'``). Defaults to ``'no'``.
-%     cfg.datalossLabel (str, optional): The name under which to store
-%         the percentage of lost data in subjectdata. Required when
-%         ``cfg.calculateDataloss`` is ``'yes'``.
+%     cfg.dataLossLabel (str, optional): The name under which to store
+%         the percentage of lost data in subjectdata. Defaults to
+%         ``'dataLoss'``.
 %     cfg.expectedtrials (int, optional): Expected trial count. Required
 %         when ``cfg.calculateDataloss`` is ``'yes'``.
-%     cfg.pathsFcn (str, optional): Paths function filename. Must resolve
-%         to a valid file on the MATLAB path. Defaults to ``'setPaths'``.
+%     cfg.pathsFcn (str): Paths function filename. Must resolve to a valid
+%         file on the MATLAB path. Required when no data is provided.
+%     cfg.saveCleanData (str, optional): When no data is provided, whether
+%         to skip re-running this step if ``cfg.outputName`` already exists
+%         on disk (``'yes'`` or ``'no'``). Checked before loading input
+%         data; independent of ``cfg.saveData``, which controls whether the
+%         result is saved at the end. Treated as ``'no'`` if omitted.
 %     cfg.overwrite (str, optional): Whether to overwrite existing output
 %         (``'yes'`` or ``'no'``). Defaults to ``'no'``.
 %     cfg.quiet (str, optional): Suppress command window output
