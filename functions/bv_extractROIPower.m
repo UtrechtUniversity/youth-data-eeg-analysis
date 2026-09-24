@@ -263,7 +263,7 @@ for g = 1:length(groupLabels)
             roi_pow = freq.powspctrm(trial_idx, chan_idx, :);
         end
 
-        total_roi = mean(roi_pow(:, :, total_idx), 'all');
+        total_roi = sum(roi_pow(:, :, total_idx), 'all');
 
         row_abs = zeros(1, nBands);
         row_rel = zeros(1, nBands);
@@ -271,7 +271,7 @@ for g = 1:length(groupLabels)
             bname = bandPairNames{b};
             brng  = freqBands.(bname);
             bidx  = find(freq.freq >= brng(1) & freq.freq < brng(2));
-            bpow  = mean(roi_pow(:, :, bidx), 'all');
+            bpow  = sum(roi_pow(:, :, bidx), 'all');
             if strcmpi(calcMethod, 'log10')
                 row_abs(b) = log10(bpow + eps_val);
                 row_rel(b) = log10(bpow + eps_val) - log10(total_roi + eps_val); % eps guards against log10(0) = -Inf
@@ -341,7 +341,7 @@ for e = 1:nEpochsTotal
             roi_pow = freq.powspctrm(e, chan_idx, :);
         end
 
-        total_roi = mean(roi_pow(:, :, total_idx), 'all');
+        total_roi = sum(roi_pow(:, :, total_idx), 'all');
 
         row_abs = zeros(1, nBands);
         row_rel = zeros(1, nBands);
@@ -349,7 +349,7 @@ for e = 1:nEpochsTotal
             bname = bandPairNames{b};
             brng  = freqBands.(bname);
             bidx  = find(freq.freq >= brng(1) & freq.freq < brng(2));
-            bpow  = mean(roi_pow(:, :, bidx), 'all');
+            bpow  = sum(roi_pow(:, :, bidx), 'all');
             if strcmpi(calcMethod, 'log10')
                 row_abs(b) = log10(bpow + eps_val);
                 row_rel(b) = log10(bpow + eps_val) - log10(total_roi + eps_val);
