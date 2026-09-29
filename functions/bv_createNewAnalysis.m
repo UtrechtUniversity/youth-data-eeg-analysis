@@ -1,40 +1,32 @@
 function bv_createNewAnalysis(str, overwrite)
-% creates folder structure for a new analysis in the EEG connectivity
-% pipeline
+% Creates the folder structure and script templates for a new analysis in
+% the EEG connectivity pipeline, inside the current working directory.
 %
-% use as:
-%   bv_createNewAnalysis(label, overwrite)
+% Creates ``RAW`` and ``Analyses`` in the current working directory, and a
+% dated ``Analyses/<date>[_label]`` analysis folder containing ``config``,
+% ``Subjects`` (with a ``removed`` subfolder), and ``summary``
+% subfolders, plus ``log.txt``, ``setPaths.m``, ``setOptions.m``,
+% ``preprocessingData.m``, ``setOptionsPower.m``, ``powerEstimates.m``,
+% ``setOptionsNetmet.m``, and ``networkMetrics.m``. If
+% ``preprocessingData.m`` needs to be (re)created, interactively prompts
+% (via ``questdlg``) for whether to use parallel processing and whether
+% to save intermediate steps, then copies the matching
+% ``preprocessingData_standard*`` template. Ends by changing the current
+% directory to the new analysis folder.
 %
-% with:
-%       label         = 'string', label to add to foldername
-%       overwrite     = bool, set to true if earlier analysis with similar
-%                           folder name should be overwritten
+% Args:
+%     str (str): Label appended to today's date (``yyyymmdd``) to form
+%         the analysis folder name, e.g. ``'test1'`` gives
+%         ``'20260929_test1'``. Pass ``''`` or ``""`` to use the date
+%         alone.
+%     overwrite (bool, optional): Whether to recreate each script and
+%         ``log.txt`` if today's analysis folder (and those files)
+%         already exist. Defaults to ``false``.
 %
-% function will create the following folder structure within the current
-% working directory
-% |_ RAW                        (folder to add raw EEG files to)
-% |_ Analyses                   (home folder of all analyses)
-%   |_ [date '_' label]         (current new analysis homefolder)
-%       |_ config               (folder where configuration files are automatically
-%                                   saved, saved as PATHS.CONFIG)
-%       |_ Subjects             (folder where subject folders will be created and
-%                                   saved)
-%           |_ removed          (folder where removed subjects will be
-%                                   automatically moved to)
-%       |_ summary              (folder for summary files)
-%       -> log.txt              (text file which automatically logs the
-%                                   inputs of the analysis)
-%       -> preprocessingData.m  (script for all preprocessing steps 
-%       -> setOptions.m         (all options to set (and change) for the
-%                                   current analysis
-%       -> setPaths.m           (all paths necessary for running the
-%                                   analysis, please check if paths are
-%                                   correct (especially the fieldtrip
-%                                   path))
-%
-% Bauke van der Velde, Utrecht University, 2019-2024
-%                       
-% see also bv_createSetPaths setOptions_default bv_createNewLog
+% Example:
+%     ```matlab
+%     bv_createNewAnalysis('test1')
+%     ```
 
 if nargin < 2
     overwrite = 0;
@@ -42,7 +34,7 @@ end
 
 if ~isempty(str) && str ~= ""
     str = ['_' char(str)];
-elseif isempty(str) || str == ""
+else
     str = '';
 end
 
@@ -93,22 +85,9 @@ else
     end
 end
 
-fprintf('\t')
-if ~overwrite && exist([PATHS.CURRANALYSIS filesep 'setOptions.m'], 'file')
-    setOptionsExist = true(1);
-    fprintf('setOptions.m already exists, not overwriting \n')
-else
-    setOptionsExist = copyfile(which('setOptions_preproc'), [PATHS.CURRANALYSIS filesep 'setOptions.m']);
-
-    if setOptionsExist
-        fprintf('setOptions.m created \n')
-    else
-        fprintf('setOptions.m creation failed, please check \n')
-    end
-end
+setOptionsExist = createScriptFromTemplate(PATHS.CURRANALYSIS, 'setOptions.m', 'setOptions_preproc', overwrite);
 
 fprintf('\t')
-
 if ~overwrite && exist([PATHS.CURRANALYSIS filesep 'preprocessingData.m'], 'file')
     preprocessExist = true(1);
     fprintf('preprocessingData.m already exists, not overwriting \n')
@@ -122,86 +101,31 @@ else
     if strcmpi(parprocess, 'Yes')
         config = [config, '-parprocess'];
     end
-    
+
     if strcmpi(saveIntermediate, 'Yes')
         config = [config, '-saveintermediate'];
     end
 
     switch config
-        case '-parprocess-saveintermediate'            
-            [preprocessExist, msg] = copyfile(which('preprocessingData_standard_parfor'), [PATHS.CURRANALYSIS filesep 'preprocessingData.m']);
-
-        case '-parprocess'            
-            [preprocessExist, msg] = copyfile(which('preprocessingData_standard_withoutSave_parfor'), [PATHS.CURRANALYSIS filesep 'preprocessingData.m']);
-
-        case '-saveintermediate'            
-            [preprocessExist, msg] = copyfile(which('preprocessingData_standard'), [PATHS.CURRANALYSIS filesep 'preprocessingData.m']);
-
-        case ''            
-            [preprocessExist, msg] = copyfile(which('preprocessingData_standard_withoutSave'), [PATHS.CURRANALYSIS filesep 'preprocessingData.m']);
-
+        case '-parprocess-saveintermediate'
+            template = 'preprocessingData_standard_parfor';
+        case '-parprocess'
+            template = 'preprocessingData_standard_withoutSave_parfor';
+        case '-saveintermediate'
+            template = 'preprocessingData_standard';
+        case ''
+            template = 'preprocessingData_standard_withoutSave';
         otherwise
             error('unknown configuration')
     end
-                
-    if  preprocessExist
-        fprintf('preprocessingData.m created \n')
-    else
-        fprintf('preprocessingData.m not created with following warning: \n\t\t %s\n', msg)
-    end
+
+    preprocessExist = copyTemplate(PATHS.CURRANALYSIS, 'preprocessingData.m', template);
 end
 
-fprintf('\t')
-if ~overwrite && exist([PATHS.CURRANALYSIS filesep 'setOptionsPower.m'], 'file')
-    setPowerOptionsExist = true(1);
-    fprintf('setOptionsPower.m already exists, not overwriting \n')
-else
-    setPowerOptionsExist = copyfile(which('setOptions_power'), [PATHS.CURRANALYSIS filesep 'setOptionsPower.m']);
-    if setPowerOptionsExist
-        fprintf('setOptionsPower.m created \n')
-    else
-        fprintf('setOptionsPower.m creation failed, please check \n')
-    end
-end
-
-fprintf('\t')
-if ~overwrite && exist([PATHS.CURRANALYSIS filesep 'powerEstimates.m'], 'file')
-    powerEstimatesExist = true(1);
-    fprintf('powerEstimates.m already exists, not overwriting \n')
-else
-    [powerEstimatesExist, msg] = copyfile(which('powerEstimates_standard'), [PATHS.CURRANALYSIS filesep 'powerEstimates.m']);
-    if powerEstimatesExist
-        fprintf('powerEstimates.m created \n')
-    else
-        fprintf('powerEstimates.m not created with following warning: \n\t\t %s\n', msg)
-    end
-end
-
-fprintf('\t')
-if ~overwrite && exist([PATHS.CURRANALYSIS filesep 'setOptionsNetmet.m'], 'file')
-    setNetmetOptionsExist = true(1);
-    fprintf('setOptionsNetmet.m already exists, not overwriting \n')
-else
-    setNetmetOptionsExist = copyfile(which('setOptions_netmet'), [PATHS.CURRANALYSIS filesep 'setOptionsNetmet.m']);
-    if setNetmetOptionsExist
-        fprintf('setOptionsNetmet.m created \n')
-    else
-        fprintf('setOptionsNetmet.m creation failed, please check \n')
-    end
-end
-
-fprintf('\t')
-if ~overwrite && exist([PATHS.CURRANALYSIS filesep 'networkMetrics.m'], 'file')
-    networkMetricsExist = true(1);
-    fprintf('networkMetrics.m already exists, not overwriting \n')
-else
-    [networkMetricsExist, msg] = copyfile(which('networkMetrics_standard'), [PATHS.CURRANALYSIS filesep 'networkMetrics.m']);
-    if networkMetricsExist
-        fprintf('networkMetrics.m created \n')
-    else
-        fprintf('networkMetrics.m not created with following warning: \n\t\t %s\n', msg)
-    end
-end
+setPowerOptionsExist  = createScriptFromTemplate(PATHS.CURRANALYSIS, 'setOptionsPower.m', 'setOptions_power', overwrite);
+powerEstimatesExist   = createScriptFromTemplate(PATHS.CURRANALYSIS, 'powerEstimates.m', 'powerEstimates_standard', overwrite);
+setNetmetOptionsExist = createScriptFromTemplate(PATHS.CURRANALYSIS, 'setOptionsNetmet.m', 'setOptions_netmet', overwrite);
+networkMetricsExist   = createScriptFromTemplate(PATHS.CURRANALYSIS, 'networkMetrics.m', 'networkMetrics_standard', overwrite);
 
 fprintf('create log: \n')
 if ~overwrite && exist([PATHS.CURRANALYSIS filesep 'log.txt'], 'file')
@@ -220,3 +144,29 @@ else
 end
 
 cd(PATHS.CURRANALYSIS)
+
+end
+
+function ok = createScriptFromTemplate(analysisFolder, targetName, templateName, overwrite)
+% Copies templateName (resolved via ``which``) into analysisFolder as
+% targetName and reports the outcome, unless targetName already exists
+% and overwrite is false.
+fprintf('\t')
+if ~overwrite && exist([analysisFolder filesep targetName], 'file')
+    ok = true(1);
+    fprintf('%s already exists, not overwriting \n', targetName)
+else
+    ok = copyTemplate(analysisFolder, targetName, templateName);
+end
+end
+
+function ok = copyTemplate(analysisFolder, targetName, templateName)
+% Copies templateName (resolved via ``which``) into analysisFolder as
+% targetName and reports the outcome.
+[ok, msg] = copyfile(which(templateName), [analysisFolder filesep targetName]);
+if ok
+    fprintf('%s created \n', targetName)
+else
+    fprintf('%s not created with following warning: \n\t\t %s\n', targetName, msg)
+end
+end

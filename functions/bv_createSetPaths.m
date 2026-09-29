@@ -1,4 +1,31 @@
 function filecreated = bv_createSetPaths(path2root, path2home)
+% Writes a setPaths.m script defining the PATHS struct for an analysis.
+%
+% The generated script hardcodes ``path2root`` and ``path2home`` into
+% ``PATHS.ROOT``/``PATHS.HOME`` and derives the rest of the pipeline's
+% standard paths (``PATHS.SUBJECTS``, ``PATHS.REMOVED``,
+% ``PATHS.CONFIG``, ``PATHS.SUMMARY``, ``PATHS.RAWS``,
+% ``PATHS.PIPELINE``, ``PATHS.FTPATH``, ``PATHS.TOOLBOXES``) from them.
+% Running the generated script also creates ``PATHS.SUBJECTS``,
+% ``PATHS.REMOVED``, ``PATHS.CONFIG``, and ``PATHS.SUMMARY`` on disk if
+% missing, and adds FieldTrip, the pipeline functions, and any bundled
+% toolboxes to the MATLAB path.
+%
+% Args:
+%     path2root (str): Full path to the analysis folder (written out as
+%         ``PATHS.ROOT``); this is where ``setPaths.m`` is saved.
+%     path2home (str): Full path to the pipeline's root/home folder
+%         (written out as ``PATHS.HOME``), i.e. the folder containing
+%         ``RAW``, ``functions``, ``fieldtrip``, and ``toolboxes``.
+%
+% Returns:
+%     filecreated (bool): Whether ``setPaths.m`` now exists at
+%         ``path2root``.
+%
+% Example:
+%     ```matlab
+%     filecreated = bv_createSetPaths('/data/eegCovid/Analyses/20260929_test1', '/data/eegCovid');
+%     ```
 
 fid = fopen([path2root filesep 'setPaths.m'], 'w');
 
@@ -33,7 +60,7 @@ if exist([path2root filesep 'setPaths.m'], 'file') == 2
     filecreated = true(1);
 else
     filecreated = false(1);
-    warning('No setOptions.m file created at given location')
+    warning('No setPaths.m file created at given location')
 end
 
 fclose(fid);
