@@ -1,18 +1,25 @@
 function [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(startSubject, endSubject)
-% helper function to give you the indices of the start subject and end
-% subject for your analysis. 
+% Resolves a start/end subject (by name or index) into a usable range.
 %
-% Usage:
-%   [ startSubject , endSubject, subjectFolderNames ] = bv_getSubjectRange( startSubject, endSubject )
+% Args:
+%     startSubject (str or int): Subject folder name (or substring
+%         uniquely matching one) or 1-based index of the first subject.
+%     endSubject (str or int): Subject folder name (or substring uniquely
+%         matching one), 1-based index of the last subject, or ``'end'``
+%         for the last subject folder found.
 %
-% Input:
-%   startSubject        Can be name of folder or index
-%   endSubject          Can be name of folder, index, or the string 'end'
+% Returns:
+%     startSubject (int): 1-based index of the first subject.
+%     endSubject (int): 1-based index of the last subject.
+%     subjectFolderNames (cell array of str): Names of every (non-removed)
+%         subject folder under ``PATHS.SUBJECTS``, in the order returned
+%         by ``dir`` - the same order ``startSubject``/``endSubject``
+%         index into.
 %
-% Output:
-%   startSubject        Index of starting subject
-%   endSubject          Index of end subject
-%   subjectFolderNames  { cell } with strings with all folder names
+% Example:
+%     ```matlab
+%     [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+%     ```
 
 eval('setPaths')
 
@@ -22,13 +29,29 @@ subjectFolders = subjectFolders(~strcmp(fullfile(PATHS.SUBJECTS, {subjectFolders
 subjectFolderNames = {subjectFolders.name};
 
 if ischar(startSubject)
-    startSubject = find(contains(subjectFolderNames, startSubject));
+    startSubject = resolveSubjectIndex(startSubject, subjectFolderNames);
 end
 if ischar(endSubject)
     if strcmp(endSubject, 'end')
         endSubject = length(subjectFolderNames);
     else
-        endSubject = find(contains(subjectFolderNames, endSubject));
+        endSubject = resolveSubjectIndex(endSubject, subjectFolderNames);
     end
 end
 
+end
+
+
+function idx = resolveSubjectIndex(name, subjectFolderNames)
+% Resolves a subject folder name (or substring) to a unique 1-based index.
+matches = find(contains(subjectFolderNames, name));
+if isempty(matches)
+    error('bv_getSubjectRange:notFound', ...
+        'No subject folder found matching ''%s''.', name)
+elseif ~isscalar(matches)
+    error('bv_getSubjectRange:ambiguous', ...
+        '''%s'' matches multiple subject folders (%s); provide a more specific name.', ...
+        name, strjoin(subjectFolderNames(matches), ', '))
+end
+idx = matches;
+end

@@ -1,20 +1,27 @@
 function Wsq = bv_multisquareform(Ws, tovector)
-% Apply (nan)squareform across a stack of connectivity matrices.
+% Applies nansquareform across a stack of connectivity matrices/edge vectors.
 %
-% usage:
-%   Wsq = bv_multisquareform(Ws, tovector)
+% Args:
+%     Ws (numeric): With ``tovector=true`` (default): an array of
+%         connectivity matrices with dim (chan x chan x ...). Any
+%         trailing dimensions (e.g. epoch, freq) are collapsed, each
+%         chan x chan slice is vectorised with ``nansquareform``, and the
+%         result is reshaped back to (... x nEdges). A plain chan x chan
+%         matrix (no trailing dims) returns a single edge vector instead.
+%         With ``tovector=false``: a stack of edge vectors
+%         (nSlices x nEdges) that are expanded back into square matrices
+%         (chan x chan x nSlices).
+%     tovector (logical, optional): Direction of the transform. Defaults
+%         to ``true``.
 %
-% inputs:
-%   Ws        with tovector=true (default): an array of connectivity
-%             matrices with dim (chan x chan x ...). Any trailing
-%             dimensions (e.g. epoch, freq) are collapsed, each chan x chan
-%             slice is vectorised with nansquareform, and the result is
-%             reshaped back to (... x nEdges).
-%             With tovector=false: a stack of edge vectors (nSlices x nEdges)
-%             that are expanded back into square matrices (chan x chan x nSlices).
-%   tovector  logical, direction of the transform (default: true).
+% Returns:
+%     Wsq (numeric): The transformed array/stack, per ``Ws`` above.
 %
-% See also NANSQUAREFORM, SQUAREFORM
+% Example:
+%     ```matlab
+%     edges = bv_multisquareform(W);             % chan x chan x n -> n x nEdges
+%     W     = bv_multisquareform(edges, false);  % n x nEdges -> chan x chan x n
+%     ```
 
 if nargin < 2
     tovector = true;
@@ -42,6 +49,6 @@ if tovector
 
 else
     for i = 1:size(Ws, 1)
-        Wsq(:,:,i) = squareform(Ws(i,:));
+        Wsq(:,:,i) = nansquareform(Ws(i,:));
     end
 end
