@@ -1,4 +1,27 @@
-function subjectresults = bv_createSubjectResults(inputStr, keepstruct)
+function subjectresults = bv_createSubjectResults()
+% Rebuilds a subject summary table by rescanning every subject folder.
+%
+% Reads ``Subject.mat`` from every folder under ``PATHS.SUBJECTS``
+% (active subjects) and ``PATHS.REMOVED`` (removed subjects), strips
+% per-run-only fields (see ``bv_stripSummaryOnlyFields``), reconciles
+% field names across subjects (see ``bv_reconcileSummaryArray``, needed
+% since different subjects may have reached different pipeline steps),
+% and orders fields canonically (see ``bv_orderSubjectFields``). Unlike
+% ``SubjectSummary.mat``, this is always rebuilt fresh from disk rather
+% than loaded, so it reflects the current state of every subject folder
+% even if ``SubjectSummary.mat`` is stale or missing.
+%
+% Returns:
+%     subjectresults (table): One row per subject (active and removed),
+%         converted from the reconciled subjectdata struct array via
+%         ``struct2table``. A table with no rows or variables
+%         (``table()``) if no subject folders exist yet under
+%         ``PATHS.SUBJECTS`` or ``PATHS.REMOVED``.
+%
+% Example:
+%     ```matlab
+%     subjectresults = bv_createSubjectResults();
+%     ```
 
 eval('setPaths')
 
@@ -11,6 +34,12 @@ subjectrmflags = dir(PATHS.REMOVED);
 subjectrmflags = subjectrmflags([subjectrmflags.isdir] & ~ismember({subjectrmflags.name}, {'.', '..'}));
 
 subjectdirflags = [subjectdirflags; subjectrmflags];
+
+if isempty(subjectdirflags)
+    fprintf('done! \n')
+    subjectresults = table();
+    return
+end
 
 for i = 1:length(subjectdirflags)
     lng = printPercDone(length(subjectdirflags), i);
@@ -28,147 +57,10 @@ for i = 1:length(subjectdirflags)
         [subjectdatasummary(1:i-1), subjectdata] = bv_reconcileSummaryArray(subjectdatasummary(1:i-1), subjectdata);
 
         subjectdatasummary(i) = subjectdata;
-        
+
     end
     fprintf(repmat('\b', 1, lng))
 end
 fprintf('done! \n')
-% end
 subjectdatasummary = bv_orderSubjectFields(subjectdatasummary);
-subjectdatasummary = struct2table(subjectdatasummary);
-
-if nargin > 0
-    fprintf('\t loading results into subjectsummary ... ')
-    counter = 0;
-    while 1
-        counter = counter + 1;
-        disp(counter);
-        for i = 1:100
-            disp(i)
-            subjectresultstmp = subjectdatasummary(i,:);
-            
-            evalc('[resultsStruct, succeed] = bv_quickloadData(subjectdatasummary.subjectName{i}, inputStr);');
-            
-            if ~succeed
-%                 fprintf(repmat('\b', 1, lng))
-%                 startIndx = startIndx + 1;
-                continue
-            end
-            if keepstruct
-                subjectresultstmp.(inputStr) = resultsStruct;
-            else
-                fnames = fieldnames(resultsStruct);
-                for j = 1:length(fnames)
-                    switch class(resultsStruct.(fnames{j}))
-                        case 'double'
-                            if length(resultsStruct.(fnames{j}))==1
-                                subjectresultstmp.(fnames{j})(1) = resultsStruct.(fnames{j});
-                            else
-                                subjectresultstmp.(fnames{j}){1} = resultsStruct.(fnames{j});
-                            end
-                        otherwise
-                            subjectresultstmp.(fnames{j}){1} = resultsStruct.(fnames{j});
-                    end
-                end
-            end
-            
-            if exist('subjectresultstmp', 'var')
-                break
-            end
-        end
-        if exist('subjectresultstmp', 'var')
-            break
-        end
-    end    
-    
-    for i = 1:height(subjectdatasummary)
-        newSubjectresult = add2subjectresults(subjectdatasummary(i,:), subjectresultstmp, inputStr, keepstruct);
-        if ~isempty(newSubjectresult)
-            subjectresults(i,:) = newSubjectresult;
-        else
-            new_subj_indx = height(subjectresults) + 1;
-            subjectresults(new_subj_indx+1,:) = subjectresults(1,:);
-            subjectresults(end,:) = [];
-            subjectresults.subjectName(new_subj_indx) = subjectdatasummary(i,:).subjectName;
-            T1 = subjectresults(new_subj_indx,:);
-            T2 = subjectdatasummary(i,:);
-            T1 = T1(:,{'subjectName', T1.Properties.VariableNames{~ismember(T1.Properties.VariableNames, T2.Properties.VariableNames)}});
-            T1 = outerjoin(T1, T2, 'Keys', 'subjectName', 'MergeKeys', true);
-            [~,sorted] = ismember(subjectresults.Properties.VariableNames, T1.Properties.VariableNames);
-            T1 = T1(:,sorted);
-            subjectresults(i,:) = T1;
-            subjectresults(i,:).removed = 1;
-        end
-    end
-    fprintf('done! \n')
-    subjectresults(cellfun(@isempty, subjectresults.pseudo),:) =[];
-else
-    subjectresults = subjectdatasummary;
-end
-
-% HELPER FUNCTIONS
-function subjectresults = add2subjectresults(subjectdatasummary, subjectresults, inputStr, keepstruct)
-subjectresultstmp = subjectdatasummary;
-
-if subjectdatasummary.removed
-    subjectresults.pseudo = subjectdatasummary.pseudo;
-    subjectresults.removed = 1;
-else
-    evalc('[resultsStruct, succeed] = bv_quickloadData(subjectdatasummary.subjectName, inputStr);');
-    
-    if ~(succeed)
-        %     fprintf('\t inputStr not found, skipping \n')
-        subjectresults = [];
-        return
-    end
-    if keepstruct
-        subjectresultstmp.(inputStr) = resultsStruct;
-    else
-        fnames = fieldnames(resultsStruct);
-        for j = 1:length(fnames)
-            switch class(subjectresults.(fnames{j}))
-                case 'double'
-                    subjectresultstmp.(fnames{j})(1) = resultsStruct.(fnames{j});
-                otherwise
-                    subjectresultstmp.(fnames{j}){1} = resultsStruct.(fnames{j});
-            end
-        end
-        
-        fnamesSummary = fieldnames(subjectresults);
-        fnamesTmp = fieldnames(subjectresultstmp);
-        extraFieldsTmp = fnamesTmp(find(not(ismember(fnamesTmp, fnamesSummary))));
-        extraFieldsSummary = fnamesSummary(find(not(ismember(fnamesSummary, fnamesTmp))));
-        
-        for j = 1:length(extraFieldsTmp)
-            if isstruct(subjectresultstmp)
-                subjectresultstmp = rmfield(subjectresultstmp, extraFieldsTmp{j});
-            elseif istable(subjectresultstmp)
-                subjectresultstmp(:, ismember(subjectresultstmp.Properties.VariableNames, extraFieldsTmp{j})) = [];
-            end
-            
-        end
-        for j = 1:length(extraFieldsSummary)
-            if isstruct(subjectresultstmp)
-                subjectresultstmp = rmfield(subjectresultstmp, extraFieldsSummary{j});
-            elseif istable(subjectresultstmp)
-                
-                switch class(subjectresults.(extraFieldsSummary{j}))
-                    case 'double'
-                        subjectresultstmp.(extraFieldsSummary{j})(1) = subjectresults.(extraFieldsSummary{j});
-                    otherwise
-                        subjectresultstmp.(extraFieldsSummary{j}){1} = subjectresults.(extraFieldsSummary{j});
-                end
-                
-            end
-            
-        end
-        
-        n1 = subjectresults.Properties.VariableNames;
-        n2 = subjectresultstmp.Properties.VariableNames;
-        [~,y] = ismember(n1, n2);
-        subjectresultstmp = subjectresultstmp(:,y);
-        
-        
-    end
-    subjectresults = subjectresultstmp;
-end
+subjectresults = struct2table(subjectdatasummary);

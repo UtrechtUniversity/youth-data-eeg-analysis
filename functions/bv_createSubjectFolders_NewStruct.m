@@ -1,55 +1,62 @@
 function bv_createSubjectFolders_NewStruct(cfg)
-% bv_createSubjectFolders_YOUth2 creates the folder structure necessary to
-% run analyses for infant EEG and adds an individual Subject.mat file in
-% each folder with individual information and paths to important files.
+% Creates the subject folder structure for infant EEG analyses from raw
+% data in a nested folder layout, and writes a Subject.mat file (with
+% per-subject metadata and paths) into each new subject folder.
 %
-% This version expects raw data in a nested folder structure:
-%   PATHS.RAWS / WAVE / PSEUDO / file.<dataType>
+% Raw data is expected under ``PATHS.RAWS`` in a nested structure, e.g.
+% ``PATHS.RAWS/WAVE/PSEUDO/file.<dataType>``. The number of folder levels
+% is controlled by ``cfg.folderlabel``; levels can be skipped by removing
+% them from that list (and from ``cfg.folderPattern``). Subjects whose name
+% or data file can't be resolved are skipped (logged via
+% ``removingSubjects``) rather than aborting the run. Finishes by writing
+% ``SubjectSummary.mat`` to ``PATHS.SUMMARY``.
 %
-% The number of folder levels is controlled by cfg.folderlabel; levels can
-% be skipped by simply removing them from that list (and from folderPattern).
+% Args:
+%     cfg.rawdelim (str): Delimiter used when joining parts of the
+%         subject folder name (usually ``'_'``).
+%     cfg.sfoldername (cell array of str): Field names used to construct
+%         each subject folder name. Fields can come from
+%         ``cfg.folderlabel`` (folder levels) or ``cfg.rawlabel``
+%         (filename parts), e.g. ``{'pseudo', 'wave'}`` creates a
+%         ``B00002_10m`` folder.
+%     cfg.dataType (str): Raw data type: ``'bdf'``, ``'eeg'``, or
+%         ``'mat'``.
+%     cfg.rawlabel (cell array of str, optional): Names for parts of the
+%         filename, split by ``cfg.rawdelim``. Use ``[]`` to skip a
+%         part. Stored as fields on the Subject struct. Defaults to
+%         ``{}`` (filename is not parsed).
+%     cfg.folderlabel (cell array of str, optional): Names for each
+%         folder level below ``PATHS.RAWS``, in order. Stored as fields
+%         on the Subject struct. Defaults to ``{'wave', 'pseudo'}``.
+%     cfg.folderPattern (cell array of str, optional): One regex string
+%         per folder level, matching the order of ``cfg.folderlabel``.
+%         Use ``''`` to match all directories at a given level. Omitting
+%         a level from ``cfg.folderlabel`` (and this array) skips it
+%         entirely. Defaults to ``''`` for every level.
+%     cfg.filePattern (str, optional): Regex applied to filenames.
+%         Defaults to ``''`` (match all).
+%     cfg.pathsFcn (str, optional): Paths function filename that sets
+%         ``PATHS``. Defaults to ``'setPaths'``.
+%     cfg.overwrite (str, optional): Whether to re-create subject folders
+%         that already exist in ``SubjectSummary`` (``'yes'`` or
+%         ``'no'``). When ``'no'``, raw files already present in
+%         ``PATHS.DATAFILE`` are skipped, and a resolved subject is
+%         merged into ``SubjectSummary`` by ``subjectName`` (replacing an
+%         existing row rather than duplicating it). Defaults to ``'no'``.
+%     cfg.prevAnalysis (str, optional): Used when ``cfg.dataType`` is
+%         ``'mat'``: label of the previous analysis step. Defaults to
+%         ``'preproc'``.
 %
-% The output folder structure (PATHS.SUBJECTS/PSEUDO_WAVE) and the contents
-% of each Subject.mat are identical to bv_createSubjectFolders_YOUth.
-%
-% Use as
-%   bv_createSubjectFolders_NewStruct( cfg )
-%
-% Required fields:
-%   cfg.rawdelim        ' string ' delimiter used when joining the parts of
-%                       the subject folder name (usually '_')
-%   cfg.sfoldername     { cell } field names used to construct each subject
-%                       folder name. Fields can come from cfg.folderlabel
-%                       (folder levels) or cfg.rawlabel (filename parts).
-%                       E.g. {'pseudo', 'wave'} creates a B00002_10m folder.
-%   cfg.dataType        ' string ' raw data type: 'bdf', 'eeg', or 'mat'
-%
-% Optional fields:
-%   cfg.rawlabel        { cell } names for parts of the filename, split by
-%                       cfg.rawdelim. Use [] to skip a part. These are
-%                       stored as fields on the Subject struct.
-%                       Default: {} (filename is not parsed)
-%   cfg.folderlabel     { cell } names for each folder level below
-%                       PATHS.RAWS, in order. These are stored as fields on
-%                       the Subject struct.
-%                       Default: {'wave', 'experiment', 'pseudo'}
-%   cfg.folderPattern   { cell } one regex string per folder level (matching
-%                       the order of cfg.folderlabel). Use '' to match all
-%                       directories at a given level. Omitting a level from
-%                       cfg.folderlabel (and this array) skips it entirely.
-%                       Default: '' for every level
-%   cfg.filePattern     ' string ' regex applied to filenames.
-%                       Default: '' (match all)
-%   cfg.pathsFcn        ' string ' m-file that sets PATHS and OPTIONS
-%                       (default: 'setPaths')
-%   cfg.overwrite       'yes'/'no' re-create subject folders that already
-%                       exist in SubjectSummary (default: 'no'). WARNING:
-%                       overwrite='no' hits bv_addSubjectToSubjectsummary,
-%                       which only exists under unused/ (not on the
-%                       MATLAB path) - currently broken/unreachable, since
-%                       every driver script hardcodes overwrite='yes'.
-%   cfg.prevAnalysis    ' string ' used with cfg.dataType = 'mat': label of
-%                       the previous analysis step (default: 'preproc')
+% Example:
+%     ```matlab
+%     cfg = [];
+%     cfg.rawdelim      = '_';
+%     cfg.sfoldername   = {'pseudo', 'wave'};
+%     cfg.dataType      = 'bdf';
+%     cfg.folderlabel   = {'wave', 'pseudo'};
+%     cfg.overwrite     = 'yes';
+%     bv_createSubjectFolders_NewStruct(cfg);
+%     ```
 
 
 % --- read configuration ---
@@ -76,6 +83,7 @@ if strcmpi(overwrite, 'no')
     end
 else
     overwrite = 'yes';
+    subjectdatasummary = struct([]);
 end
 
 % --- discover raw files ---
@@ -110,7 +118,11 @@ for subjIndex = 1:length(files)
     % --- resolve metadata and subject folder name ---
     try
         % extract metadata from folder levels
-        relativePath = strrep(files(subjIndex).folder, PATHS.RAWS, '');
+        if startsWith(files(subjIndex).folder, PATHS.RAWS)
+            relativePath = files(subjIndex).folder(length(PATHS.RAWS)+1:end);
+        else
+            relativePath = files(subjIndex).folder;
+        end
         if ~isempty(relativePath) && relativePath(1) == filesep
             relativePath = relativePath(2:end);
         end
@@ -155,7 +167,11 @@ for subjIndex = 1:length(files)
         nameResolved = false;
     end
 
-    % suffix with a counter if a folder with this name already exists
+    % suffix with a counter if a folder with this name already exists.
+    % contains() is used deliberately (not strcmp/exact match) so that
+    % earlier suffixed duplicates (e.g. 'B002_10m_2') are also counted
+    % when a third 'B002_10m' comes in - exact matching would miss them
+    % and start re-numbering from '_2' every time.
     existingFolders = dir(PATHS.SUBJECTS);
     existingFolders = existingFolders([existingFolders.isdir]);
     nMatches = sum(contains({existingFolders.name}, subjectdata.subjectName));
@@ -180,10 +196,10 @@ for subjIndex = 1:length(files)
     subjectdata.PATHS.PREPROCDIR = preprocDir;
     subjectdata.PATHS.POWERDIR   = powerDir;
     subjectdata.PATHS.NETMETDIR  = netmetDir;
-    subjectdata.preprocDate = date;
-    subjectdata.removed       = false(1);
-    subjectdata.removedDuring = '';
-    subjectdata.removedReason = '';
+    subjectdata.preprocDate      = datetime("today");
+    subjectdata.removed          = false(1);
+    subjectdata.removedDuring    = '';
+    subjectdata.removedReason    = '';
 
     % reserved for the sliding-window epoching step, if/when one is added
     % to the power-estimate stage; NaN until then, or for any subject
@@ -248,14 +264,27 @@ for subjIndex = 1:length(files)
     fprintf('done \n')
 
     if strcmpi(overwrite, 'no')
-        % NOTE: bv_addSubjectToSubjectsummary only exists under unused/,
-        % which setPaths.m does not add to the MATLAB path (only
-        % functions/ is added) - this branch hard-crashes with "Undefined
-        % function" if ever reached. Currently unreachable/dormant since
-        % every driver script hardcodes OPTIONS.CREATEFOLDERS.overwrite=
-        % 'yes'. Pre-existing bug, not introduced here; left as-is until
-        % the overwrite='no' path actually needs to work.
-        subjectdatasummary = bv_addSubjectToSubjectsummary(subjectdatasummary, bv_stripSummaryOnlyFields(subjectdata));
+        % find-or-append by subjectName, mirroring the logic in bv_updateSubjectSummary.
+        strippedData = bv_stripSummaryOnlyFields(subjectdata);
+        if isempty(subjectdatasummary)
+            % first subject on a cold start (no existing SubjectSummary
+            % rows yet): assign directly so the array picks up
+            % strippedData's own field set. bv_reconcileSummaryArray's
+            % array-wide field-add only attaches a field to elements that
+            % already exist, so calling it against a struct with zero
+            % elements would leave subjectdatasummary without any fields
+            % at all, and the ismember(...subjectName) lookup below would
+            % then error with "no such field".
+            subjectdatasummary = strippedData;
+        else
+            [subjectdatasummary, strippedData] = bv_reconcileSummaryArray(subjectdatasummary, strippedData);
+            existingIndx = find(ismember({subjectdatasummary.subjectName}, strippedData.subjectName));
+            if isempty(existingIndx)
+                subjectdatasummary(end+1) = strippedData;
+            else
+                subjectdatasummary(existingIndx) = strippedData;
+            end
+        end
     else
         % index by nSubjects+1 (not subjIndex) so that files skipped via
         % continue above never leave gaps with subjectName = [] in the
@@ -274,7 +303,7 @@ fprintf('\n\n saving SubjectSummary.mat...')
 save(fullfile(PATHS.SUMMARY, 'SubjectSummary'), 'subjectdatasummary')
 fprintf('done \n')
 
-logstrct.totalStartSubjects = nSubjects;
+% logstrct.totalStartSubjects = nSubjects;
 % bv_updateLog([PATHS.ROOT filesep 'log.txt'], logstrct);
 
 

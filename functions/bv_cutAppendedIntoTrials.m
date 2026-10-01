@@ -1,61 +1,105 @@
 function [data, finished] = bv_cutAppendedIntoTrials(cfg, dataOld)
-% Cuts appended data into trials of given triallength, using
-% ft_redefinetrial. Only cuts continuous / consecutive data.
+% Cuts appended/continuous data into fixed-length trials.
 %
-% Can be used with data input:
-%  [ cutdata ] = bv_cutAppendedIntoTrials(cfg, appenddata)
+% Only continuous (consecutive-sample) stretches of the input data are
+% cut, via ft_redefinetrial; stretches shorter than cfg.triallength are
+% dropped. Can be used with data passed in directly, or loaded from disk
+% for a given subject (and optionally saved back).
 %
-% which needs an cfg structure with the following fields:
-%   cfg.triallength = [ number ], length (in s) of the trials
+% Args:
+%     cfg.triallength (number): Length of each output trial, in seconds.
+%     cfg.ntrials (int or str, optional): Number of trials to randomly
+%         keep from the cut data. Defaults to ``'all'`` (keep every
+%         trial). If fewer than this many trials were cut, returns
+%         ``finished = false`` instead.
+%     cfg.currSubject (str): Subject folder name. Required when no data
+%         is provided.
+%     cfg.inputStr (str): Field name in ``subjectdata.PATHS`` used to load
+%         input data. Required when no data is provided.
+%     cfg.saveData (str, optional): Whether to save output to disk
+%         (``'yes'`` or ``'no'``). Only meaningful when no data is
+%         provided - forced to ``'no'`` when ``dataOld`` is given.
+%         Defaults to ``'no'``.
+%     cfg.outputStr (str, optional): Unique label for output file and
+%         ``subjectdata.PATHS`` entry. Defaults to
+%         ``['triallength' num2str(cfg.triallength)]``.
+%     cfg.overwrite (str, optional): Whether to overwrite existing output
+%         (``'yes'`` or ``'no'``). Only checked when no data is provided.
+%         Defaults to ``'no'``.
+%     cfg.pathsFcn (str, optional): Paths function filename. Must resolve
+%         to a valid file on the MATLAB path. Defaults to ``'setPaths'``.
+%     cfg.optionsFcn (str, optional): Options function filename. Must
+%         resolve to a valid file on the MATLAB path. Defaults to
+%         ``'setOptions'``.
+%     dataOld (struct, optional): FieldTrip data structure containing one
+%         or more continuous trials/segments to cut. If omitted, data is
+%         loaded from disk using ``cfg.currSubject`` and ``cfg.inputStr``.
 %
-% or without data-input to be used in analysis-pipeline starting with
-% bv_createSubjectFolders:
-%  [ cutdata ] = bv_cutAppendedIntoTrials(cfg)
+% Returns:
+%     data (struct): FieldTrip data cut into ``cfg.triallength``-second
+%         trials. Empty (``[]``) if no continuous segment is at least
+%         ``cfg.triallength`` long, if fewer than ``cfg.ntrials`` trials
+%         were cut, or if output already exists and ``cfg.overwrite`` is
+%         ``'no'``.
+%     finished (bool): Whether cutting succeeded (``false`` in any of the
+%         empty-``data`` cases above).
 %
-% which needs an cfg structure with the following fields:
-%   cfg.triallength     = [ number ], length (in s) of the trials
-%   cfg.currSubject     = 'string', subjectfoldername to analyze
-%   cfg.inputStr        = 'string', string to find data to analyze (should
-%                           be named after the field in the subjectdata.PATHS
-%                           structure (f.e. 'APPEND'))
-%   cfg.outputStr       = 'string', output string to save the file
-%                           (default: ['triallength' num2str(triallength)])
-%   cfg.saveData        = 'yes/no', check whether data needs to be saved to
-%                           subject folder
+% Example:
+%     Cut data provided directly:
 %
-% The second options loads in data using bv_check4data and saves data using
-% bv_savedata
+%     ```matlab
+%     cfg = [];
+%     cfg.triallength = 5;
+%     [data, finished] = bv_cutAppendedIntoTrials(cfg, appenddata);
+%     ```
 %
-% See also BV_CREATESUBJECTFOLDERS, BV_CHECK4DATA, FT_REDEFINETRIAL,
-% BV_SAVEDATA
+%     Load data from disk for a subject and save the cut trials:
+%
+%     ```matlab
+%     cfg = [];
+%     cfg.currSubject = 'B12345_99m';
+%     cfg.inputStr    = 'APPENDED';
+%     cfg.triallength = 5;
+%     cfg.saveData    = 'yes';
+%     [data, finished] = bv_cutAppendedIntoTrials(cfg);
+%     ```
 
 currSubject = ft_getopt(cfg, 'currSubject');
 inputStr    = ft_getopt(cfg, 'inputStr');
 triallength = ft_getopt(cfg, 'triallength');
 outputStr   = ft_getopt(cfg, 'outputStr', ['triallength' num2str(triallength)]);
-saveData    = ft_getopt(cfg, 'saveData');
+saveData    = ft_getopt(cfg, 'saveData', 'no');
 ntrials     = ft_getopt(cfg, 'ntrials', 'all');
 overwrite   = ft_getopt(cfg, 'overwrite', 'no');
+pathsFcn    = ft_getopt(cfg, 'pathsFcn', 'setPaths');
+optionsFcn  = ft_getopt(cfg, 'optionsFcn', 'setOptions');
 
 cfgIn = cfg;
 
 if isempty(triallength)
-    error('no config struct does not contain triallength')
+    error('config struct does not contain triallength')
 end
 
 if nargin < 2
     disp(currSubject)
-    
-    eval('setOptions');
-    eval('setPaths');
-    
+
+    eval(pathsFcn)
+    eval(optionsFcn)
+
     subjectFolderPath = [PATHS.SUBJECTS filesep currSubject];
     [subjectdata] = bv_check4data(subjectFolderPath);
-    if exist(PATHS.(outputStr), 'file') & strcmpi(overwrite, 'no')
-        fprintf('\t file already exists, not overwriting ... \n')
+    if strcmpi(overwrite, 'no')
+        if isfield(subjectdata.PATHS, upper(outputStr))
+            if exist(subjectdata.PATHS.(upper(outputStr)), 'file')
+                fprintf('\t %s already found, not overwriting ... \n', upper(outputStr))
+                data = [];
+                finished = false;
+                return
+            end
+        end
     end
 
-    [subjectdata, dataOld] = bv_check4data(subjectFolderPath, inputStr);
+    [subjectdata, ~, dataOld] = bv_check4data(subjectFolderPath, inputStr);
 else
     saveData = 'no';
 end
@@ -66,7 +110,7 @@ trialparts2use = find(continuousSeconds >= triallength);
 if isempty(trialparts2use)
     fprintf('\t \t no trials found, skipping ... \n')
     data = [];
-    finished = 0;
+    finished = false;
     return;
 end
 
@@ -75,15 +119,15 @@ trialinfo = [];
 for i = 1:length(trialparts2use)
     trl = trialparts2use(i);
     nTrls = floor(continuousSeconds(trl) / triallength);
-    
+
     for j = 1:nTrls
         currsampleinfoStart = (dataOld.sampleinfo(trl,1) + triallength*dataOld.fsample*(j-1));
         currsampleinfoEnd = dataOld.sampleinfo(trl,1) + triallength*dataOld.fsample*(j) - 1;
         currsampleinfo = [currsampleinfoStart currsampleinfoEnd];
-        
+
         sampleinfo = cat(1, sampleinfo, currsampleinfo);
         trialinfo = cat(1, trialinfo, dataOld.trialinfo(trl));
-        
+
     end
 end
 
@@ -113,13 +157,11 @@ if not(strcmpi(ntrials, 'all'))
     end
 end
 
-subjectdata.nTrialsCleaned = length(data.trial);
-
 if strcmpi(saveData, 'yes')
-    
+    subjectdata.nTrialsCleaned = length(data.trial);
     subjectdata.analysisOrder = bv_updateAnalysisOrder(subjectdata.analysisOrder, cfgIn);
     bv_updateSubjectSummary([PATHS.SUMMARY filesep 'SubjectSummary.mat'], bv_stripSummaryOnlyFields(subjectdata))
-    
+
     bv_saveData(subjectdata, data, outputStr);
 end
 finished = true;

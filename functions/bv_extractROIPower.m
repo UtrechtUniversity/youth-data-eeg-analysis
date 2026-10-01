@@ -2,12 +2,22 @@ function power = bv_extractROIPower(cfg, freq)
 % Extracts ROI- and band-specific power from a FieldTrip frequency structure.
 %
 % For each ROI and frequency band, power is computed at three levels:
-%   - per epoch (one row per clean epoch, unaveraged)
-%   - per condition (averaged over that condition's clean epochs)
-%   - global (averaged over all clean epochs, pooled across conditions)
-% Condition- and global-level rows record how many clean epochs they were
-% averaged over (nEpochs). A 'Global' entry using all channels is appended
-% after the named ROIs at every level.
+%   - per epoch (one row per clean epoch)
+%   - per condition (pooled over that condition's clean epochs)
+%   - global (pooled over all clean epochs, across conditions)
+% Condition and global-level rows record how many clean epochs went into
+% them (nEpochs), but pooling is done by SUMMING power across those
+% epochs (and across a ROI's channels, and across the frequency bins in
+% a band), not by averaging - this is deliberate: relative power (``_rel``)
+% is a same-epoch-set ratio (band sum / total sum), so it stays valid and
+% comparable regardless of epoch or channel count. Absolute power
+% (``_abs``) and ``Total``, however, scale with how many epochs/channels
+% were pooled - a condition or subject with more clean epochs, or a ROI
+% with more channels, will show proportionally higher absolute power even
+% with identical underlying signal. Use ``_abs``/``Total`` only alongside
+% ``nEpochs`` (and matching ROI channel counts); prefer ``_rel`` for
+% cross-condition/cross-subject/cross-ROI comparisons. A 'Global' entry
+% using all channels is appended after the named ROIs at every level.
 %
 % Args:
 %     cfg.currSubject (str): Subject folder name. Required when no freq is
@@ -38,7 +48,7 @@ function power = bv_extractROIPower(cfg, freq)
 %         Must contain a ``total`` field (used as the denominator for
 %         relative power). All other fields are treated as named bands.
 %         Each value is a ``[low high]`` vector in Hz. Defaults to
-%         theta [3 6], alpha [6 9], total [1 35].
+%         delta [1 3], theta [3 5], alpha [5 15], total [1 35].
 %     cfg.calcMethod (str, optional): Whether to store absolute/relative
 %         power as raw values (``'raw'``) or log10 values (``'log10'``).
 %         Defaults to ``'raw'``.
@@ -122,6 +132,13 @@ quiet           = ft_getopt(cfg, 'quiet', 'no');
 
 quiet = strcmpi(quiet, 'yes');
 
+if strcmpi(saveData, 'yes') && nargin >= 2 && ~isfield(cfg, 'currSubject')
+    error(['cfg.saveData is ''yes'' but freq was passed in directly and ' ...
+        'cfg.currSubject was not given - there is no subjectdata to save ' ...
+        'the output against. Either omit freq (load from disk) or set ' ...
+        'cfg.currSubject.'])
+end
+
 %% load data (if necessary)
 if nargin < 2
     if ~quiet; disp(currSubject); end
@@ -165,7 +182,7 @@ elseif isfield(cfg, 'currSubject')
         end
     else
         evalc('[subjectdata, check] = bv_check4data(subjectFolderPath);');
-        if ~check %#ok<NODEF>
+        if ~check
             error('%s: Subject.mat not found', currSubject)
         end
     end
@@ -395,7 +412,7 @@ power.calcMethod = calcMethod;
 
 %% save data
 if strcmpi(saveData, 'yes')
-    outputFilename = [subjectdata.subjectName '_' outputName '.mat']; %#ok<NODEF>
+    outputFilename = [subjectdata.subjectName '_' outputName '.mat'];
     fieldname = upper(outputName);
     subjectdata.PATHS.(fieldname) = fullfile(subjectdata.PATHS.POWERDIR, outputFilename);
 
