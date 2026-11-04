@@ -19,8 +19,10 @@ function bv_createSubjectFolders_NewStruct(cfg)
 %         ``cfg.folderlabel`` (folder levels) or ``cfg.rawlabel``
 %         (filename parts), e.g. ``{'pseudo', 'wave'}`` creates a
 %         ``B00002_10m`` folder.
-%     cfg.dataType (str): Raw data type: ``'bdf'``, ``'eeg'``, or
-%         ``'mat'``.
+%     cfg.dataType (str): Raw data type: ``'bdf'``, ``'edf'``, ``'eeg'``,
+%         or ``'mat'``. The recording start date/time (``testDate``,
+%         ``testTime``) is only read from bdf/edf headers; for the other
+%         types both are set to ``'unknown'``.
 %     cfg.rawlabel (cell array of str, optional): Names for parts of the
 %         filename, split by ``cfg.rawdelim``. Use ``[]`` to skip a
 %         part. Stored as fields on the Subject struct. Defaults to
@@ -43,9 +45,16 @@ function bv_createSubjectFolders_NewStruct(cfg)
 %         ``PATHS.DATAFILE`` are skipped, and a resolved subject is
 %         merged into ``SubjectSummary`` by ``subjectName`` (replacing an
 %         existing row rather than duplicating it). Defaults to ``'no'``.
-%     cfg.prevAnalysis (str, optional): Used when ``cfg.dataType`` is
-%         ``'mat'``: label of the previous analysis step. Defaults to
-%         ``'preproc'``.
+%     cfg.inputName (str): Required when ``cfg.dataType`` is ``'mat'``.
+%         Name of the analysis step whose saved output is the input, e.g.
+%         ``'PREPROC'``. The ``.mat`` files are found under
+%         ``PATHS.RAWS`` like the other data types (same
+%         ``cfg.folderlabel``/``cfg.folderPattern``/``cfg.filePattern``),
+%         and of those only files named ``<subjectName>_<inputName>.mat``
+%         (case-insensitive) are used. The file's path is stored in
+%         ``subjectdata.PATHS.(upper(inputName))``. Note that skipping
+%         already-processed files with ``cfg.overwrite = 'no'`` does not
+%         apply to ``'mat'``, since its ``PATHS.DATAFILE`` is ``'unknown'``.
 %
 % Example:
 %     ```matlab
@@ -61,7 +70,7 @@ function bv_createSubjectFolders_NewStruct(cfg)
 
 % --- read configuration ---
 pathsFcn        = ft_getopt(cfg, 'pathsFcn', 'setPaths');
-prevAnalysis    = ft_getopt(cfg, 'prevAnalysis', 'preproc');
+inputName       = ft_getopt(cfg, 'inputName');
 rawdelim        = ft_getopt(cfg, 'rawdelim');
 sfolderstruct   = ft_getopt(cfg, 'sfoldername');
 inputnames      = ft_getopt(cfg, 'rawlabel', {});
@@ -87,14 +96,22 @@ else
 end
 
 % --- discover raw files ---
-if strcmpi(dataType, 'mat')
-    files = dir([PATHS.PREPROC filesep '*' prevAnalysis '.mat']);
-    if isempty(files)
-        error('no files found for inputstring: %s \n', prevAnalysis)
-    end
-else
-    files = discoverFiles(PATHS.RAWS, dataType, folderPattern, filePattern);
-    if isempty(files)
+if strcmpi(dataType, 'mat') && isempty(inputName)
+    error('cfg.inputName is required when cfg.dataType is ''mat''')
+end
+
+files = discoverFiles(PATHS.RAWS, dataType, folderPattern, filePattern);
+
+if strcmpi(dataType, 'mat') && ~isempty(files)
+    % several .mat files can sit side by side (one per analysis step, named
+    % <subjectName>_<outputName>.mat): keep only those of the requested input
+    files = files(endsWith({files.name}, ['_' inputName '.mat'], 'IgnoreCase', true));
+end
+
+if isempty(files)
+    if strcmpi(dataType, 'mat')
+        error('no mat files for input ''%s'' found under %s matching the given patterns', inputName, PATHS.RAWS)
+    else
         error('no %s files found under %s matching the given patterns', dataType, PATHS.RAWS)
     end
 end
@@ -237,9 +254,9 @@ for subjIndex = 1:length(files)
             case 'mat'
                 dataFile = 'unknown';
                 hdrFile  = 'unknown';
-                subjectdata.PATHS.(upper(prevAnalysis)) = fullfile(PATHS.PREPROC, [cFile '.mat']);
-                if ~exist(subjectdata.PATHS.(upper(prevAnalysis)), 'file')
-                    error('dataFile: %s not found!', subjectdata.PATHS.(upper(prevAnalysis)))
+                subjectdata.PATHS.(upper(inputName)) = fullfile(files(subjIndex).folder, files(subjIndex).name);
+                if ~exist(subjectdata.PATHS.(upper(inputName)), 'file')
+                    error('dataFile: %s not found!', subjectdata.PATHS.(upper(inputName)))
                 end
 
             otherwise
@@ -249,7 +266,15 @@ for subjIndex = 1:length(files)
         subjectdata.PATHS.DATAFILE = dataFile;
         subjectdata.PATHS.HDRFILE  = hdrFile;
         [~, subjectdata.filename, ~] = fileparts(subjectdata.PATHS.DATAFILE);
-        [subjectdata.testDate, subjectdata.testTime] = bv_readOutDateAndTimeBdf(dataFile);
+
+        % the recording start date/time can only be read from the header of
+        % a bdf/edf file; for other data types it is not available here
+        if any(strcmpi(dataType, {'bdf', 'edf'}))
+            [subjectdata.testDate, subjectdata.testTime] = bv_readOutDateAndTimeBdf(dataFile);
+        else
+            subjectdata.testDate = 'unknown';
+            subjectdata.testTime = 'unknown';
+        end
     catch ME
         save(fullfile(paths2SubjectFolder, 'Subject'), 'subjectdata');
         removingSubjects(removingSubjectsCfg, subjectdata.subjectName, ME.message);

@@ -1,33 +1,67 @@
 function [subjectdatasummary, subjectdata] = bv_reconcileSummaryArray(subjectdatasummary, subjectdata)
-% bv_reconcileSummaryArray makes subjectdata and every element of the
-% subjectdatasummary struct array share the same set of field names, at
-% every level of nesting, so that a later whole-element assignment
-% (subjectdatasummary(idx) = subjectdata) or a struct2table conversion
-% doesn't fail with "Subscripted assignment between dissimilar
+% Makes a subjectdata struct and a subjectdatasummary struct array
+% share field names.
+%
+% Aligns subjectdata with every element of the subjectdatasummary struct
+% array, both at the top level and inside nested struct fields (e.g.
+% ``cfgs``, ``PATHS``), so that a later whole-element assignment
+% (``subjectdatasummary(idx) = subjectdata``) or a struct2table
+% conversion doesn't fail with "Subscripted assignment between dissimilar
 % structures."
 %
-% This needs two different mechanisms, because MATLAB struct arrays only
-% allow one of them:
-%   1) TOP-LEVEL fields: every element of a struct array must share
+% This uses two different mechanisms, because MATLAB struct arrays only
+% allow one of them at a time:
+%   1) Top-level fields: every element of a struct array must share
 %      identical top-level field names at all times. A field can only be
 %      added array-wide, via the classic
-%      [subjectdatasummary(1:end).newfield] = deal(default) idiom -
+%      ``[subjectdatasummary(1:end).newfield] = deal(default)`` idiom -
 %      assigning a struct with an extra top-level field into a single
 %      element fails immediately, because every *other* element still
 %      lacks that field.
-%   2) NESTED fields (inside struct-valued fields like cfgs/PATHS, which
+%   2) Nested fields (inside struct-valued fields like cfgs/PATHS, which
 %      pick up different sub-fields per subject depending on which
 %      pipeline steps that subject reached): these are reconciled once
-%      top-level fields already match, via BV_RECONCILESUBJECTFIELDS,
-%      assigning into one element's nested field at a time
-%      (subjectdatasummary(i).cfgs = ...). That is NOT a whole-element
-%      replacement, so - unlike (1) - it carries no array-wide
-%      consistency requirement or processing-order constraint.
+%      the top-level fields already match, via
+%      BV_RECONCILESUBJECTFIELDS, assigning into one element's nested
+%      field at a time (``subjectdatasummary(i).cfgs = ...``). That is
+%      NOT a whole-element replacement, so - unlike (1) - it carries no
+%      array-wide consistency requirement.
 %
-% Use as
-%   [subjectdatasummary, subjectdata] = bv_reconcileSummaryArray(subjectdatasummary, subjectdata)
+% Note: the nested fields are reconciled in a single pass over the
+% elements, so each row is only backfilled with the nested fields known at
+% the moment it is visited. This leaves all rows consistent as long as
+% the existing rows already agree with each other, which holds when rows
+% are only ever added through this function (as BV_CREATESUBJECTRESULTS
+% and BV_UPDATESUBJECTSUMMARY do).
 %
-% See also BV_RECONCILESUBJECTFIELDS, BV_UPDATESUBJECTSUMMARY, BV_CREATESUBJECTRESULTS
+% If subjectdatasummary is empty there is nothing to reconcile against,
+% so it is returned as an empty array carrying subjectdata's fields. The
+% caller can then append subjectdata right away.
+%
+% Args:
+%     subjectdatasummary (struct array): Existing summary rows, one per
+%         subject.
+%     subjectdata (struct): Scalar struct for one subject.
+%
+% Returns:
+%     subjectdatasummary (struct array): The same rows, plus every
+%         top-level field that only ``subjectdata`` had (filled with a
+%         class-appropriate default, see BV_DEFAULTLIKEVALUE), with
+%         nested fields backfilled.
+%     subjectdata (struct): ``subjectdata``, plus every top-level field
+%         that only the summary rows had (filled with a default), with
+%         nested fields backfilled.
+%
+% Example:
+%     ```matlab
+%     [subjectdatasummary, subjectdata] = bv_reconcileSummaryArray(subjectdatasummary, subjectdata);
+%     subjectdatasummary(end+1) = subjectdata;
+%     ```
+
+if isempty(subjectdatasummary)
+    subjectdatasummary = subjectdata(1:0);
+    return
+end
 
 arrayFields   = fieldnames(subjectdatasummary);
 subjectFields = fieldnames(subjectdata);

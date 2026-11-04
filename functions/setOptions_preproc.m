@@ -15,7 +15,7 @@ OPTIONS.maxbadchans             = 3;
 
 %% Create subject folders
 OPTIONS.CREATEFOLDERS.pathsFcn      = OPTIONS.pathsScript;
-OPTIONS.CREATEFOLDERS.prevAnalysis  = []; % only required when datatype = 'mat'
+OPTIONS.CREATEFOLDERS.inputName     = []; % only required when dataType = 'mat': name of the step whose output is the input (e.g. 'PREPROC')
 OPTIONS.CREATEFOLDERS.rawdelim      = '_'; % delimiter found in raw eeg files
 OPTIONS.CREATEFOLDERS.sfoldername   = {'pseudo', 'wave'}; % how your subject folders should be labeled
 OPTIONS.CREATEFOLDERS.overwrite     = 'yes';
