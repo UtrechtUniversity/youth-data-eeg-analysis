@@ -7,6 +7,10 @@ function strength = bv_calculateStrength(cfg, connectivity)
 % (mirroring bv_extractROIPower). The NaN diagonal is never included, and
 % edges are extracted with bv_multisquareform and nansquareform.
 %
+% The connectivity struct has to hold per-epoch PLI (chan x chan x epoch x
+% freq), i.e. be computed by BV_CALCULATEPLI with ``cfg.keeptrials =
+% 'yes'``; otherwise an error is raised.
+%
 % Args:
 %     cfg.currSubject (str): Subject folder name. Required when no
 %         connectivity struct is provided.
@@ -81,6 +85,15 @@ if ~computeGlobal && ~computeROI
     error('bv_calculateStrength: both computeGlobal and computeROI are off; nothing to compute')
 end
 
+if strcmpi(saveData, 'yes') && isempty(outputName)
+    error('bv_calculateStrength: cfg.outputName is required when cfg.saveData is ''yes''')
+end
+if strcmpi(saveData, 'yes') && nargin >= 2 && ~isfield(cfg, 'currSubject')
+    error(['bv_calculateStrength: cfg.saveData is ''yes'' but the connectivity struct was ' ...
+        'passed in directly and cfg.currSubject was not given - there is no subjectdata to ' ...
+        'save the output against'])
+end
+
 if ~isempty(conditionLabelsList) && length(conditionLabelsList) ~= length(conditions)
     error(['bv_calculateStrength: cfg.conditionLabels must have the same number of ' ...
         'elements as cfg.conditions (one label per condition code, in the same order)'])
@@ -121,7 +134,9 @@ if nargin < 2
         end
     end
 
-    subjectdata.cfgs.(outputName) = cfg;
+    if ~isempty(outputName)
+        subjectdata.cfgs.(outputName) = cfg;
+    end
 
 elseif isfield(cfg, 'currSubject')
     eval(pathsFcn)
@@ -159,6 +174,12 @@ nfreq     = size(spctrm, 4);
 labels    = connectivity.label;
 bands     = connectivity.freq;            % cell of band-name strings
 trialinfo = connectivity.trialinfo;
+
+if size(spctrm, 3) ~= size(trialinfo, 1)
+    error(['bv_calculateStrength: connectivity.%s has %d entries along its epoch dimension ' ...
+        'but trialinfo has %d: per-epoch PLI is required (bv_calculatePLI with ' ...
+        'cfg.keeptrials = ''yes'')'], spctrmfield, size(spctrm, 3), size(trialinfo, 1))
+end
 
 %% build region list (Global and/or ROIs)
 regionNames = {};

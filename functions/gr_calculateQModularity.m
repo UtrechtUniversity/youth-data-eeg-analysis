@@ -1,42 +1,46 @@
 function qmod = gr_calculateQModularity(cfg, connectivity)
-% Computes Louvain community structure and modularity (Q) from a PLI
-% connectivity struct.
+% Computes Louvain community structure and modularity (Q) from per-epoch
+% PLI.
 %
-% Ported from unused/gr_calculateQModularity.m (which took a raw N x N x m
-% adjacency stack and an edgeType flag, and called community_louvain
-% directly). This version keeps the same core computation -
-% community_louvain on the (optionally normalised) adjacency matrix - but
-% is wrapped in the cfg-based interface used by the similar network-metric
-% steps (bv_calculateStrength, bv_calculateSWP), so it can plug into
-% networkMetrics_standard.m the same way: per condition and per frequency
-% band, for the whole network ('Global') and/or for each ROI, returned as
-% a tidy table.
+% For every condition (and a pooled pass over all epochs) and every
+% frequency band, the per-epoch connectivity matrices of the epochs involved
+% are averaged, and community detection is run on the whole network
+% ('Global') and/or on each ROI's subgraph. Q goes into a tidy table with
+% one column per band; the community of every channel goes into a tidy
+% long-format table.
 %
-% For each connectivity matrix the diagonal is set to 0 (structural
-% self-loop-free convention), any all-NaN channels (removed channels) are
-% dropped, and community detection is run with community_louvain (weighted
-% matrices are normalised with gr_normalizeW first, matching the original
-% 'weighted' edgeType branch). Degenerate graphs (< 3 nodes / all-zero)
-% yield NaN. Per-matrix failures are caught and yield NaN with a warning
-% so the pipeline does not stop.
+% Each averaged matrix is prepared the same way for all network metrics: the
+% diagonal is set to 0, channels without data (all-NaN rows, i.e. removed
+% channels) are dropped, and graphs with fewer than 3 nodes or without any
+% non-zero weight give NaN. Weighted matrices are min-max normalised with
+% GR_NORMALIZEW before community_louvain. If one matrix fails, its entry is
+% NaN and a warning is issued, so the run is not stopped.
 %
-% NOTE: community_louvain is used from FieldTrip's bundled Brain
-% Connectivity Toolbox copy (fieldtrip/external/bct) via
-% ft_hastoolbox('BCT', 1), rather than bundling a separate copy. ROI-level
-% modularity is computed on small subgraphs and should be interpreted with
-% caution.
+% The connectivity struct has to hold per-epoch PLI (chan x chan x epoch x
+% freq), i.e. be computed by BV_CALCULATEPLI with ``cfg.keeptrials =
+% 'yes'``; otherwise an error is raised.
+%
+% community_louvain visits the nodes in random order, so Q and the
+% communities can vary between runs on the same data. community_louvain
+% comes from FieldTrip's bundled Brain Connectivity Toolbox
+% (fieldtrip/external/bct), added to the path with ft_hastoolbox('BCT', 1).
+% ROI-level modularity is computed on small subgraphs and should be
+% interpreted with caution.
 %
 % Args:
 %     cfg.currSubject (str): Subject folder name. Required when no
 %         connectivity struct is provided.
-%     cfg.inputName (str): Field in ``subjectdata.PATHS`` for the PLI file
-%         (e.g. ``'PLI3'``). Required when no connectivity struct is provided.
-%     cfg.outputName (str): Label for the output file and
-%         ``subjectdata.PATHS`` entry. Required when saving.
-%     cfg.saveData (str): ``'yes'``/``'no'`` (default ``'no'``).
-%     cfg.conditions (numeric): Condition codes processed separately. A
-%         pooled pass over all epochs (always labelled 'Global') is always
-%         added. Set to ``[]`` for pooled only. Default ``[]``.
+%     cfg.inputName (str): Field name in ``subjectdata.PATHS`` used to load
+%         the PLI file (e.g. ``'PLI3'``). Required when no connectivity
+%         struct is provided.
+%     cfg.outputName (str): Label for the output file and its
+%         ``subjectdata.PATHS`` entry. Required when saving data.
+%     cfg.saveData (str, optional): Whether to save the output to disk
+%         (``'yes'`` or ``'no'``). Defaults to ``'no'``.
+%     cfg.conditions (numeric, optional): Condition codes to process
+%         separately. A pooled pass over all epochs (labelled 'Global') is
+%         always added; use ``[]`` for the pooled pass only. Defaults to
+%         ``[]``.
 %     cfg.conditionLabels (cell array of str, optional): Display labels for
 %         cfg.conditions' Condition column, matched *positionally* - the
 %         i-th label is used for cfg.conditions(i), so this must be in the
@@ -46,37 +50,57 @@ function qmod = gr_calculateQModularity(cfg, connectivity)
 %         'Social'). Codes without a label (or when this is omitted/empty)
 %         fall back to the stringified condition code. The pooled pass is
 %         always labelled 'Global'.
-%     cfg.computeGlobal (str): ``'yes'``/``'no'`` whole-network modularity
-%         (default ``'yes'``).
-%     cfg.computeROI (str): ``'yes'``/``'no'`` per-ROI modularity
-%         (default ``'yes'``).
-%     cfg.ROI (struct): Fields are ROI labels, values are cell arrays of
-%         channel labels. Defaults to the power estimate steps' ROI set.
-%     cfg.edgeType (str): ``'weighted'`` (normalises with gr_normalizeW
-%         before community_louvain) or ``'binary'`` (uses the matrix as-is,
-%         matching the original gr_calculateQModularity behaviour). Default
+%     cfg.computeGlobal (str, optional): Whether to compute modularity for
+%         the whole network (``'yes'`` or ``'no'``). Defaults to ``'yes'``.
+%     cfg.computeROI (str, optional): Whether to compute modularity for each
+%         ROI (``'yes'`` or ``'no'``). At least one of cfg.computeGlobal and
+%         cfg.computeROI has to be ``'yes'``. Defaults to ``'yes'``.
+%     cfg.ROI (struct, optional): Struct where each field name is a ROI
+%         label and its value is a cell array of channel labels. Defaults to
+%         the standard frontal, central, parietal and occipital ROIs also
+%         used by BV_EXTRACTROIPOWER.
+%     cfg.edgeType (str, optional): ``'weighted'`` (min-max normalises with
+%         GR_NORMALIZEW before community_louvain) or ``'binary'`` (uses the
+%         matrix as it is, without thresholding or normalising). Defaults to
 %         ``'weighted'``.
-%     cfg.gamma (numeric): community_louvain resolution parameter
-%         (default 1, classic modularity).
-%     cfg.spctrmfield (str): Connectivity field to use (default
-%         ``'plispctrm'``).
-%     cfg.pathsFcn (str): Paths function (default ``'setPaths'``).
-%     cfg.optionsFcn (str): Options function (default ``'setOptionsNetmet'``).
-%     cfg.overwrite (str): ``'yes'``/``'no'`` (default ``'no'``).
-%     cfg.quiet (str): ``'yes'``/``'no'`` (default ``'no'``).
+%     cfg.gamma (numeric, optional): Resolution parameter of
+%         community_louvain (1 is classic modularity). Defaults to ``1``.
+%     cfg.spctrmfield (str, optional): Field of the connectivity struct that
+%         holds the per-epoch connectivity. Defaults to ``'plispctrm'``.
+%     cfg.pathsFcn (str, optional): Paths function filename. Must resolve to
+%         a valid file on the MATLAB path. Defaults to ``'setPaths'``.
+%     cfg.optionsFcn (str, optional): Options function filename. Must
+%         resolve to a valid file on the MATLAB path. Defaults to
+%         ``'setOptionsNetmet'``.
+%     cfg.overwrite (str, optional): Whether to overwrite existing output
+%         (``'yes'`` or ``'no'``). Only checked when no connectivity struct
+%         is provided. Defaults to ``'no'``.
+%     cfg.quiet (str, optional): Suppress command window output (``'yes'``
+%         or ``'no'``). Defaults to ``'no'``.
 %     connectivity (struct, optional): PLI connectivity struct from
-%         bv_calculatePLI. If omitted, loaded from disk.
+%         BV_CALCULATEPLI, with per-epoch PLI. If omitted, loaded from disk
+%         using ``cfg.currSubject`` and ``cfg.inputName``.
 %
 % Returns:
 %     qmod (struct): Struct with fields ``table`` (columns Subject, Wave,
-%         Condition, Region, plus one column per frequency band with Q
-%         values), ``communityTable`` (a tidy long-format table with
-%         columns Subject, Wave, Condition, Region, Band, Channel,
-%         Community - one row per node per band per condition per region,
-%         fully self-describing rather than requiring cross-referencing
-%         against ``table``'s row order), ``conditions``, ``ROI``, and
-%         ``bands``. Empty (``[]``) if output already exists and
-%         ``cfg.overwrite`` is ``'no'``.
+%         Condition, Region, plus one column per frequency band with the Q
+%         values), ``communityTable`` (tidy long format with columns
+%         Subject, Wave, Condition, Region, Band, Channel, Community: one
+%         row per channel per band per condition per region),
+%         ``conditions``, ``ROI`` and ``bands``. Empty (``[]``) if the
+%         output already exists and ``cfg.overwrite`` is ``'no'``.
+%
+% Example:
+%     ```matlab
+%     cfg                 = [];
+%     cfg.currSubject     = 'B12345_99m';
+%     cfg.inputName       = 'PLI3';
+%     cfg.outputName      = 'QMOD';
+%     cfg.saveData        = 'yes';
+%     cfg.conditions      = [129 139];
+%     cfg.conditionLabels = {'NonSocial', 'Social'};
+%     qmod = gr_calculateQModularity(cfg);
+%     ```
 
 %% ensure community_louvain (FieldTrip's bundled BCT) is on the path
 ft_hastoolbox('BCT', 1);
@@ -114,6 +138,21 @@ computeROI    = strcmpi(computeROI, 'yes');
 
 if ~computeGlobal && ~computeROI
     error('gr_calculateQModularity: both computeGlobal and computeROI are off; nothing to compute')
+end
+
+validEdgeTypes = {'weighted', 'binary'};
+if ~any(strcmp(edgeType, validEdgeTypes))
+    error('gr_calculateQModularity: unknown cfg.edgeType ''%s'' (valid: %s)', ...
+        num2str(edgeType), strjoin(validEdgeTypes, ', '))
+end
+
+if strcmpi(saveData, 'yes') && isempty(outputName)
+    error('gr_calculateQModularity: cfg.outputName is required when cfg.saveData is ''yes''')
+end
+if strcmpi(saveData, 'yes') && nargin >= 2 && ~isfield(cfg, 'currSubject')
+    error(['gr_calculateQModularity: cfg.saveData is ''yes'' but the connectivity struct was ' ...
+        'passed in directly and cfg.currSubject was not given - there is no subjectdata to ' ...
+        'save the output against'])
 end
 
 if ~isempty(conditionLabelsList) && length(conditionLabelsList) ~= length(conditions)
@@ -156,7 +195,9 @@ if nargin < 2
         end
     end
 
-    subjectdata.cfgs.(outputName) = cfg;
+    if ~isempty(outputName)
+        subjectdata.cfgs.(outputName) = cfg;
+    end
 
 elseif isfield(cfg, 'currSubject')
     eval(pathsFcn)
@@ -194,6 +235,12 @@ nfreq     = size(spctrm, 4);
 labels    = connectivity.label;
 bands     = connectivity.freq;            % cell of band-name strings
 trialinfo = connectivity.trialinfo;
+
+if size(spctrm, 3) ~= size(trialinfo, 1)
+    error(['gr_calculateQModularity: connectivity.%s has %d entries along its epoch dimension ' ...
+        'but trialinfo has %d: per-epoch PLI is required (bv_calculatePLI with ' ...
+        'cfg.keeptrials = ''yes'')'], spctrmfield, size(spctrm, 3), size(trialinfo, 1))
+end
 
 %% build region list (Global and/or ROIs)
 regionNames = {};
@@ -297,7 +344,7 @@ for c = 1:numel(condList)
                 cChannel   = [cChannel;   keepLabels(:)];                      %#ok<AGROW>
                 cCommunity = [cCommunity; Ci(:)];                              %#ok<AGROW>
             catch ME
-                warning('gr_calculateQModularity:%s %s/%s band %s: %s', ...
+                warning('gr_calculateQModularity:failed', '%s %s/%s band %s: %s', ...
                     subjName, regionNames{r}, condLabel, bands{b}, ME.message);
             end
         end

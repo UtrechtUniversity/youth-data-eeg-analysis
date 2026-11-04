@@ -14,6 +14,10 @@ function swp = bv_calculateSWP(cfg, connectivity)
 % graphs (< 3 nodes / all-zero) yield NaN. Per-matrix failures are caught
 % and yield NaN with a warning so the pipeline does not stop.
 %
+% The connectivity struct has to hold per-epoch PLI (chan x chan x epoch x
+% freq), i.e. be computed by BV_CALCULATEPLI with ``cfg.keeptrials =
+% 'yes'``; otherwise an error is raised.
+%
 % NOTE: small_world_propensity uses MATLAB's built-in graph/distances
 % functions (base MATLAB, no toolbox required as of R2022b, when
 % graphallshortestpaths was removed from the Bioinformatics Toolbox).
@@ -93,6 +97,15 @@ if ~computeGlobal && ~computeROI
     error('bv_calculateSWP: both computeGlobal and computeROI are off; nothing to compute')
 end
 
+if strcmpi(saveData, 'yes') && isempty(outputName)
+    error('bv_calculateSWP: cfg.outputName is required when cfg.saveData is ''yes''')
+end
+if strcmpi(saveData, 'yes') && nargin >= 2 && ~isfield(cfg, 'currSubject')
+    error(['bv_calculateSWP: cfg.saveData is ''yes'' but the connectivity struct was ' ...
+        'passed in directly and cfg.currSubject was not given - there is no subjectdata to ' ...
+        'save the output against'])
+end
+
 if ~isempty(conditionLabelsList) && length(conditionLabelsList) ~= length(conditions)
     error(['bv_calculateSWP: cfg.conditionLabels must have the same number of ' ...
         'elements as cfg.conditions (one label per condition code, in the same order)'])
@@ -133,7 +146,9 @@ if nargin < 2
         end
     end
 
-    subjectdata.cfgs.(outputName) = cfg;
+    if ~isempty(outputName)
+        subjectdata.cfgs.(outputName) = cfg;
+    end
 
 elseif isfield(cfg, 'currSubject')
     eval(pathsFcn)
@@ -171,6 +186,12 @@ nfreq     = size(spctrm, 4);
 labels    = connectivity.label;
 bands     = connectivity.freq;            % cell of band-name strings
 trialinfo = connectivity.trialinfo;
+
+if size(spctrm, 3) ~= size(trialinfo, 1)
+    error(['bv_calculateSWP: connectivity.%s has %d entries along its epoch dimension ' ...
+        'but trialinfo has %d: per-epoch PLI is required (bv_calculatePLI with ' ...
+        'cfg.keeptrials = ''yes'')'], spctrmfield, size(spctrm, 3), size(trialinfo, 1))
+end
 
 %% build region list (Global and/or ROIs)
 regionNames = {};
@@ -251,7 +272,7 @@ for c = 1:numel(condList)
                     swpPerBand(b) = value;
                 end
             catch ME
-                warning('bv_calculateSWP:%s %s/%s band %s: %s', ...
+                warning('bv_calculateSWP:failed', '%s %s/%s band %s: %s', ...
                     subjName, regionNames{r}, condLabel, bands{b}, ME.message);
             end
         end

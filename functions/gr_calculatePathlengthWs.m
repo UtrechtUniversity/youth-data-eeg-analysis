@@ -1,51 +1,50 @@
 function pathlen = gr_calculatePathlengthWs(cfg, connectivity)
-% Computes characteristic path length and related graph-distance measures
-% from a PLI connectivity struct.
+% Computes characteristic path length and related distance measures from
+% per-epoch PLI.
 %
-% Ported from gr_calculatePathlengthWs.m (which took a raw N x N x m
-% adjacency stack and an edgeType flag, and called
-% distance_bin/distance_wei + charpath directly). This version keeps the
-% same core computation but is wrapped in the cfg-based interface used by
-% the other network-metric steps (bv_calculateStrength, bv_calculateSWP,
-% gr_calculateQModularity, gr_calculateClusteringWs), so it can plug into
-% networkMetrics_standard.m the same way: per condition and per frequency
-% band, for the whole network ('Global') and/or for each ROI.
+% For every condition (and a pooled pass over all epochs) and every
+% frequency band, the per-epoch connectivity matrices of the epochs involved
+% are averaged, and shortest-path distances are computed on the whole
+% network ('Global') and/or on each ROI's subgraph. charpath returns several
+% related measures from one shortest-path computation; cfg.measures selects
+% which are reported. Each selected measure is its own row of the table
+% (Measure column), so band stays the only wide axis (one column per band).
 %
-% Unlike the other metrics, charpath returns several related measures off
-% a single shortest-path computation. cfg.measures selects which of them
-% to compute (default: all). Rather than widening the table with a column
-% per measure per band (which would blow up fast: nMeasures x nBands
-% columns), each selected measure is stacked as its own row via a
-% ``Measure`` column, keeping the table in the same tidy/long format
-% already used for Region and Condition - band stays the only wide axis,
-% consistent with the other metric tables.
+% Each averaged matrix is prepared the same way for all network metrics: the
+% diagonal is set to 0, channels without data (all-NaN rows, i.e. removed
+% channels) are dropped, and graphs with fewer than 3 nodes or without any
+% non-zero weight give NaN. For 'weighted' the weights are converted to
+% lengths (weight_conversion) and all-pairs distances computed with
+% distance_wei, after min-max normalisation with GR_NORMALIZEW. For 'binary'
+% and 'mst' the matrix is thresholded at > 0 and distance_bin is used. The
+% distance matrix goes into charpath, which gives the characteristic path
+% length (L), global efficiency, the node eccentricities (reported as their
+% mean), the radius and the diameter. If one matrix fails, its entry is NaN
+% and a warning is issued, so the run is not stopped.
 %
-% For each connectivity matrix the diagonal is set to 0 (structural
-% self-loop-free convention), any all-NaN channels (removed channels) are
-% dropped, and the distance matrix is computed with distance_wei (weighted,
-% on weight_conversion(W,'lengths'), matching the original 'weighted'
-% edgeType branch) or distance_bin (binary/mst, on the thresholded
-% matrix), then passed to charpath. Degenerate graphs (< 3 nodes /
-% all-zero) yield NaN for every measure. Per-matrix failures are caught
-% and yield NaN with a warning so the pipeline does not stop.
+% The connectivity struct has to hold per-epoch PLI (chan x chan x epoch x
+% freq), i.e. be computed by BV_CALCULATEPLI with ``cfg.keeptrials =
+% 'yes'``; otherwise an error is raised.
 %
-% NOTE: distance_bin/distance_wei/weight_conversion/charpath are used from
-% FieldTrip's bundled Brain Connectivity Toolbox copy
-% (fieldtrip/external/bct) via ft_hastoolbox('BCT', 1), rather than
-% bundling a separate copy. ROI-level path length is computed on small
-% subgraphs and should be interpreted with caution.
+% distance_bin, distance_wei, weight_conversion and charpath come from
+% FieldTrip's bundled Brain Connectivity Toolbox (fieldtrip/external/bct),
+% added to the path with ft_hastoolbox('BCT', 1). ROI-level path length is
+% computed on small subgraphs and should be interpreted with caution.
 %
 % Args:
 %     cfg.currSubject (str): Subject folder name. Required when no
 %         connectivity struct is provided.
-%     cfg.inputName (str): Field in ``subjectdata.PATHS`` for the PLI file
-%         (e.g. ``'PLI3'``). Required when no connectivity struct is provided.
-%     cfg.outputName (str): Label for the output file and
-%         ``subjectdata.PATHS`` entry. Required when saving.
-%     cfg.saveData (str): ``'yes'``/``'no'`` (default ``'no'``).
-%     cfg.conditions (numeric): Condition codes processed separately. A
-%         pooled pass over all epochs (always labelled 'Global') is always
-%         added. Set to ``[]`` for pooled only. Default ``[]``.
+%     cfg.inputName (str): Field name in ``subjectdata.PATHS`` used to load
+%         the PLI file (e.g. ``'PLI3'``). Required when no connectivity
+%         struct is provided.
+%     cfg.outputName (str): Label for the output file and its
+%         ``subjectdata.PATHS`` entry. Required when saving data.
+%     cfg.saveData (str, optional): Whether to save the output to disk
+%         (``'yes'`` or ``'no'``). Defaults to ``'no'``.
+%     cfg.conditions (numeric, optional): Condition codes to process
+%         separately. A pooled pass over all epochs (labelled 'Global') is
+%         always added; use ``[]`` for the pooled pass only. Defaults to
+%         ``[]``.
 %     cfg.conditionLabels (cell array of str, optional): Display labels for
 %         cfg.conditions' Condition column, matched *positionally* - the
 %         i-th label is used for cfg.conditions(i), so this must be in the
@@ -55,35 +54,59 @@ function pathlen = gr_calculatePathlengthWs(cfg, connectivity)
 %         'Social'). Codes without a label (or when this is omitted/empty)
 %         fall back to the stringified condition code. The pooled pass is
 %         always labelled 'Global'.
-%     cfg.measures (cell array of str): Which charpath measures to
-%         compute, any of ``'L'`` (characteristic path length),
-%         ``'efficiency'``, ``'eccentricity'``, ``'radius'``, ``'diameter'``.
-%         Default: all five.
-%     cfg.computeGlobal (str): ``'yes'``/``'no'`` whole-network path length
-%         (default ``'yes'``).
-%     cfg.computeROI (str): ``'yes'``/``'no'`` per-ROI path length
-%         (default ``'yes'``).
-%     cfg.ROI (struct): Fields are ROI labels, values are cell arrays of
-%         channel labels. Defaults to the power estimate steps' ROI set.
-%     cfg.edgeType (str): ``'weighted'`` (weight_conversion + distance_wei)
-%         or ``'binary'``/``'mst'`` (thresholds at > 0 and uses
-%         distance_bin, matching the original gr_calculatePathlengthWs
-%         behaviour). Default ``'weighted'``.
-%     cfg.spctrmfield (str): Connectivity field to use (default
-%         ``'plispctrm'``).
-%     cfg.pathsFcn (str): Paths function (default ``'setPaths'``).
-%     cfg.optionsFcn (str): Options function (default ``'setOptionsNetmet'``).
-%     cfg.overwrite (str): ``'yes'``/``'no'`` (default ``'no'``).
-%     cfg.quiet (str): ``'yes'``/``'no'`` (default ``'no'``).
+%     cfg.measures (cell array of str, optional): Which charpath measures to
+%         report, any of ``'L'`` (characteristic path length),
+%         ``'efficiency'`` (global efficiency), ``'eccentricity'`` (mean
+%         node eccentricity), ``'radius'`` and ``'diameter'``. Defaults to
+%         all five.
+%     cfg.computeGlobal (str, optional): Whether to compute the path length
+%         measures for the whole network (``'yes'`` or ``'no'``). Defaults
+%         to ``'yes'``.
+%     cfg.computeROI (str, optional): Whether to compute the path length
+%         measures for each ROI (``'yes'`` or ``'no'``). At least one of
+%         cfg.computeGlobal and cfg.computeROI has to be ``'yes'``. Defaults
+%         to ``'yes'``.
+%     cfg.ROI (struct, optional): Struct where each field name is a ROI
+%         label and its value is a cell array of channel labels. Defaults to
+%         the standard frontal, central, parietal and occipital ROIs also
+%         used by BV_EXTRACTROIPOWER.
+%     cfg.edgeType (str, optional): ``'weighted'`` (GR_NORMALIZEW, weight_conversion,
+%         then distance_wei) or ``'binary'``/``'mst'`` (thresholds at > 0, then
+%         distance_bin). Defaults to ``'weighted'``.
+%     cfg.spctrmfield (str, optional): Field of the connectivity struct that
+%         holds the per-epoch connectivity. Defaults to ``'plispctrm'``.
+%     cfg.pathsFcn (str, optional): Paths function filename. Must resolve to
+%         a valid file on the MATLAB path. Defaults to ``'setPaths'``.
+%     cfg.optionsFcn (str, optional): Options function filename. Must
+%         resolve to a valid file on the MATLAB path. Defaults to
+%         ``'setOptionsNetmet'``.
+%     cfg.overwrite (str, optional): Whether to overwrite existing output
+%         (``'yes'`` or ``'no'``). Only checked when no connectivity struct
+%         is provided. Defaults to ``'no'``.
+%     cfg.quiet (str, optional): Suppress command window output (``'yes'``
+%         or ``'no'``). Defaults to ``'no'``.
 %     connectivity (struct, optional): PLI connectivity struct from
-%         bv_calculatePLI. If omitted, loaded from disk.
+%         BV_CALCULATEPLI, with per-epoch PLI. If omitted, loaded from disk
+%         using ``cfg.currSubject`` and ``cfg.inputName``.
 %
 % Returns:
-%     pathlen (struct): Struct with fields ``table`` (columns Subject,
-%         Wave, Condition, Region, Measure, plus one column per frequency
-%         band), ``conditions``, ``ROI``, ``measures``, and ``bands``.
-%         Empty (``[]``) if output already exists and ``cfg.overwrite`` is
+%     pathlen (struct): Struct with fields ``table`` (columns Subject, Wave,
+%         Condition, Region, Measure, plus one column per frequency band),
+%         ``conditions``, ``ROI``, ``measures`` and ``bands``. Empty
+%         (``[]``) if the output already exists and ``cfg.overwrite`` is
 %         ``'no'``.
+%
+% Example:
+%     ```matlab
+%     cfg                 = [];
+%     cfg.currSubject     = 'B12345_99m';
+%     cfg.inputName       = 'PLI3';
+%     cfg.outputName      = 'PATHLENGTH';
+%     cfg.saveData        = 'yes';
+%     cfg.conditions      = [129 139];
+%     cfg.conditionLabels = {'NonSocial', 'Social'};
+%     pathlen = gr_calculatePathlengthWs(cfg);
+%     ```
 
 %% ensure distance_bin/distance_wei/weight_conversion/charpath (FieldTrip's bundled BCT) is on the path
 ft_hastoolbox('BCT', 1);
@@ -129,6 +152,24 @@ if ~computeGlobal && ~computeROI
     error('gr_calculatePathlengthWs: both computeGlobal and computeROI are off; nothing to compute')
 end
 
+validEdgeTypes = {'weighted', 'binary', 'mst'};
+if ~any(strcmp(edgeType, validEdgeTypes))
+    error('gr_calculatePathlengthWs: unknown cfg.edgeType ''%s'' (valid: %s)', ...
+        num2str(edgeType), strjoin(validEdgeTypes, ', '))
+end
+
+if strcmpi(saveData, 'yes') && isempty(outputName)
+    error('gr_calculatePathlengthWs: cfg.outputName is required when cfg.saveData is ''yes''')
+end
+if strcmpi(saveData, 'yes') && nargin >= 2 && ~isfield(cfg, 'currSubject')
+    error(['gr_calculatePathlengthWs: cfg.saveData is ''yes'' but the connectivity struct was ' ...
+        'passed in directly and cfg.currSubject was not given - there is no subjectdata to ' ...
+        'save the output against'])
+end
+
+if ischar(measures)
+    measures = {measures};
+end
 if isempty(measures)
     error('gr_calculatePathlengthWs: cfg.measures must not be empty')
 end
@@ -178,7 +219,9 @@ if nargin < 2
         end
     end
 
-    subjectdata.cfgs.(outputName) = cfg;
+    if ~isempty(outputName)
+        subjectdata.cfgs.(outputName) = cfg;
+    end
 
 elseif isfield(cfg, 'currSubject')
     eval(pathsFcn)
@@ -216,6 +259,12 @@ nfreq     = size(spctrm, 4);
 labels    = connectivity.label;
 bands     = connectivity.freq;            % cell of band-name strings
 trialinfo = connectivity.trialinfo;
+
+if size(spctrm, 3) ~= size(trialinfo, 1)
+    error(['gr_calculatePathlengthWs: connectivity.%s has %d entries along its epoch dimension ' ...
+        'but trialinfo has %d: per-epoch PLI is required (bv_calculatePLI with ' ...
+        'cfg.keeptrials = ''yes'')'], spctrmfield, size(spctrm, 3), size(trialinfo, 1))
+end
 
 %% build region list (Global and/or ROIs)
 regionNames = {};
@@ -300,7 +349,7 @@ for c = 1:numel(condList)
             try
                 switch edgeType
                     case 'weighted'
-                        D = distance_wei(weight_conversion(W, 'lengths'));
+                        D = distance_wei(weight_conversion(gr_normalizeW(W), 'lengths'));
                     case {'binary', 'mst'}
                         D = distance_bin(W > 0);
                 end
@@ -312,7 +361,7 @@ for c = 1:numel(condList)
                 measurePerBand.radius(b)       = rad;
                 measurePerBand.diameter(b)     = diam;
             catch ME
-                warning('gr_calculatePathlengthWs:%s %s/%s band %s: %s', ...
+                warning('gr_calculatePathlengthWs:failed', '%s %s/%s band %s: %s', ...
                     subjName, regionNames{r}, condLabel, bands{b}, ME.message);
             end
         end
