@@ -74,8 +74,6 @@ overwrite   = ft_getopt(cfg, 'overwrite', 'no');
 pathsFcn    = ft_getopt(cfg, 'pathsFcn', 'setPaths');
 optionsFcn  = ft_getopt(cfg, 'optionsFcn', 'setOptions');
 
-cfgIn = cfg;
-
 if isempty(triallength)
     error('config struct does not contain triallength')
 end
@@ -165,9 +163,10 @@ end
 
 if strcmpi(saveData, 'yes')
     subjectdata.nTrialsCleaned = length(data.trial);
-    subjectdata.analysisOrder = bv_updateAnalysisOrder(subjectdata.analysisOrder, cfgIn);
-    bv_updateSubjectSummary([PATHS.SUMMARY filesep 'SubjectSummary.mat'], bv_stripSummaryOnlyFields(subjectdata))
-
     bv_saveData(subjectdata, data, outputStr);
+
+    % bv_saveData registers the output's path in the Subject.mat it saves,
+    % so sync the summary from that file (not from subjectdata above)
+    bv_syncSubjectSummary(currSubject, pathsFcn);
 end
 finished = true;

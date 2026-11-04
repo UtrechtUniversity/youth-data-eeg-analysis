@@ -1,18 +1,32 @@
 function s = bv_stripSummaryOnlyFields(s)
-% bv_stripSummaryOnlyFields removes fields that belong in a subject's own
-% working data (Subject.mat) but shouldn't be duplicated into the
-% aggregate summary (SubjectSummary.mat / SubjectSummary.csv) - e.g.
-% because they're large, or redundant bookkeeping rather than something
-% worth comparing across subjects.
+% Removes the fields that belong in Subject.mat but not in the summary.
 %
-% Works on a scalar subjectdata struct or a subjectdatasummary struct
-% array (rmfield handles both identically, since struct arrays share
-% field names across all elements).
+% Some fields belong in a subject's own working data (Subject.mat) but
+% shouldn't be duplicated into the aggregate summary (SubjectSummary.mat /
+% SubjectSummary.csv), e.g. because they are large, or redundant
+% bookkeeping rather than something worth comparing across subjects:
+% ``filename``, ``trialfun`` and ``cleanSampleInfo``. To keep another field
+% out of the summary, add it to ``excludeFields`` below.
 %
-% Use as
-%   s = bv_stripSummaryOnlyFields(s)
+% Works on a scalar subjectdata struct or a subjectdatasummary struct array
+% (rmfield handles both identically, since struct arrays share field names
+% across all elements). Fields that are not present are ignored.
 %
-% See also BV_SYNCSUBJECTSUMMARY, BV_UPDATESUBJECTSUMMARY, REMOVINGSUBJECTS
+% Args:
+%     s (struct): subjectdata struct, or subjectdatasummary struct array.
+%
+% Returns:
+%     s (struct): ``s`` without the summary-only fields.
+%
+% Example:
+%     ```matlab
+%     subjectdata = bv_stripSummaryOnlyFields(subjectdata);
+%     ```
+
+if ~isstruct(s)
+    error('bv_stripSummaryOnlyFields:notAStruct', ...
+        'Input must be a struct, got %s (e.g. from a subject without Subject.mat)', class(s))
+end
 
 excludeFields = {'filename', 'trialfun', 'cleanSampleInfo'};
 
