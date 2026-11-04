@@ -87,7 +87,10 @@ if nargin < 2
     eval(optionsFcn)
 
     subjectFolderPath = [PATHS.SUBJECTS filesep currSubject];
-    [subjectdata] = bv_check4data(subjectFolderPath);
+    [subjectdata, check] = bv_check4data(subjectFolderPath);
+    if ~check
+        error('%s: Subject.mat not found', currSubject)
+    end
     if strcmpi(overwrite, 'no')
         if isfield(subjectdata.PATHS, upper(outputStr))
             if exist(subjectdata.PATHS.(upper(outputStr)), 'file')
@@ -99,7 +102,10 @@ if nargin < 2
         end
     end
 
-    [subjectdata, ~, dataOld] = bv_check4data(subjectFolderPath, inputStr);
+    [subjectdata, check, dataOld] = bv_check4data(subjectFolderPath, inputStr);
+    if ~check
+        error('%s: input data not found', currSubject)
+    end
 else
     saveData = 'no';
 end

@@ -58,8 +58,6 @@ function [artefactdef] = bv_createArtefactStruct(cfg, data)
 %     cfg.analyses    = {'variance', 'kurtosis'};
 %     artefactdef = bv_createArtefactStruct(cfg);
 %     ```
-%
-% See also BV_SAVEDATA BV_CHECK4DATA FT_REDEFINETRIAL FT_ARTIFACT_JUMP
 
 inputName       = ft_getopt(cfg, 'inputName');
 outputName      = ft_getopt(cfg, 'outputName');
@@ -100,9 +98,12 @@ if nargin < 2
     if ~quiet; disp(currSubject); end
     subjectFolderPath = [PATHS.SUBJECTS filesep currSubject];
     if ~quiet
-        [subjectdata] = bv_check4data(subjectFolderPath);
+        [subjectdata, check] = bv_check4data(subjectFolderPath);
     else
-        evalc('[subjectdata] = bv_check4data(subjectFolderPath);');
+        evalc('[subjectdata, check] = bv_check4data(subjectFolderPath);');
+    end
+    if ~check
+        error('%s: Subject.mat not found', currSubject)
     end
     if strcmpi(overwrite, 'no')
         if isfield(subjectdata.PATHS, upper(outputName))
@@ -115,9 +116,12 @@ if nargin < 2
     end
 
     if ~quiet
-        [~, ~, data] = bv_check4data(subjectFolderPath, inputName);
+        [~, check, data] = bv_check4data(subjectFolderPath, inputName);
     else
-        evalc('[~, ~, data] = bv_check4data(subjectFolderPath, inputName);');
+        evalc('[~, check, data] = bv_check4data(subjectFolderPath, inputName);');
+    end
+    if ~check %#ok<NODEF>
+        error('%s: input data not found', currSubject)
     end
 
     subjectdata.cfgs.(outputName) = cfgIn;
@@ -132,9 +136,12 @@ else
         if ~quiet; disp(currSubject); end
         subjectFolderPath = [PATHS.SUBJECTS filesep currSubject];
         if ~quiet
-            [subjectdata] = bv_check4data(subjectFolderPath);
+            [subjectdata, check] = bv_check4data(subjectFolderPath);
         else
-            evalc('[subjectdata] = bv_check4data(subjectFolderPath);');
+            evalc('[subjectdata, check] = bv_check4data(subjectFolderPath);');
+        end
+        if ~check %#ok<NODEF>
+            error('%s: Subject.mat not found', currSubject)
         end
 
         saveSubjectData = 'yes';

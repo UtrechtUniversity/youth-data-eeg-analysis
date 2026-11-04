@@ -10,12 +10,13 @@ function [subjectdata, check, varargout] = bv_check4data(subjectFolderPath, vara
 %
 % Returns:
 %     subjectdata (struct): Subject metadata struct loaded from
-%         ``Subject.mat``.
+%         ``Subject.mat``, or ``[]`` if ``Subject.mat`` was not found.
 %     check (logical): ``true`` if ``Subject.mat`` was found and all
 %         requested data files exist on disk; ``false`` otherwise.
 %     data1, data2, ... (any, optional): Loaded data for each requested
 %         ``inputName``, in the same order as the arguments. An entry is
-%         ``[]`` if the corresponding file was not found.
+%         ``[]`` if the corresponding file was not found (all entries are
+%         ``[]`` if ``Subject.mat`` itself was not found).
 %
 % Example:
 %     Load only the subject metadata:
@@ -41,9 +42,10 @@ if exist ([subjectFolderPath filesep 'Subject.mat'],'file')
     load([subjectFolderPath filesep 'Subject.mat']) %#ok<LOAD>
     fprintf('done! \n')
 else
-    warning('No Subject.mat file found')
+    warning('No Subject.mat file found in %s', subjectFolderPath)
     check = false;
-    varargout = {};
+    subjectdata = [];
+    varargout = cell(1, nArgs);
     return
 end
 

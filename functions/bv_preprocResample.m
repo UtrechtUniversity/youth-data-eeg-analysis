@@ -268,7 +268,6 @@ if ~quiet; fprintf('\t loading in data ... '); end
 
 cfg = [];
 neighbours = [];
-layout = [];
 
 % only read in EEG data (without possible removed channels)
 if removingChans && isfield(subjectdata, 'flaggedChannels') && ~isempty(subjectdata.flaggedChannels)
@@ -345,7 +344,6 @@ if strcmpi(interpolate, 'yes')
         cfg.missingchannel = subjectdata.flaggedChannels';
         cfg.method = interpMethod;
         cfg.neighbours = neighbours;
-        cfg.layout = layout;
         evalc('data = ft_channelrepair(cfg, data);');
 
         % keep a record of ALL channels interpolated so far (also by other

@@ -87,9 +87,12 @@ if nargin < 2
 
     if ~quiet
         disp(currSubject)
-        [subjectdata, ~, dataOld] = bv_check4data(subjectFolderPath, inputName);
+        [subjectdata, check, dataOld] = bv_check4data(subjectFolderPath, inputName);
     else
-        evalc('[subjectdata, ~, dataOld] = bv_check4data(subjectFolderPath, inputName);');
+        evalc('[subjectdata, check, dataOld] = bv_check4data(subjectFolderPath, inputName);');
+    end
+    if ~check %#ok<NODEF>
+        error('%s: input data not found', currSubject)
     end
 
     subjectdata.cfgs.(outputName) = cfgIn;

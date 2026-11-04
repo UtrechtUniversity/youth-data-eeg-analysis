@@ -1,65 +1,92 @@
 function [data, subjectdata] = bv_removeChannels(cfg, data, artefactdef)
-% bv_removeChannels removes and repairs channels 
+% Flags channels with too many artefact-ridden trials, and optionally repairs them.
 %
-% Use as
-%   [data] = bv_removeChannels(cfg)
+% A trial counts as bad for a channel if any metric in ``cfg.lims`` exceeds
+% its limit in ``artefactdef``. A channel is flagged when the percentage of
+% bad trials exceeds ``cfg.maxpercbad``. The flagged channels are recorded
+% in ``subjectdata`` (``flaggedChannels``, split by metric into
+% ``flatChannels`` and ``noisyChannels``, plus ``nChannels``). They are left
+% out the next time the data is read in (see BV_PREPROCRESAMPLE with
+% ``cfg.removechans``), or interpolated here when ``cfg.repairchans`` is
+% ``'yes'``. A subject with more than ``cfg.maxbadchans`` flagged channels
+% is removed (see REMOVINGSUBJECTS).
 %
-% or as
-%   [data] = bv_removeChannels(cfg, data, artefactdef)
+% Channels interpolated here are added to ``subjectdata.interpolatedChannels``,
+% which keeps the channels interpolated by earlier steps.
 %
-% inputs:
-%   cfg             : input configuration structure
-%   data            : fieldtrip eeg data variable
-%   artefactdef     : structure with artefact information calculated with
-%                       bv_createArtifactStruct
+% Args:
+%     cfg.lims (struct): Rejection thresholds for artefact metrics. Each
+%         field must match a metric in the artefact struct (``kurtosis``,
+%         ``variance``, ``jump``, ``abs``, ``range``, ``flatline``). A
+%         selection of these metrics can be used. The struct is required.
+%     cfg.expectedtrials (int, optional): Number of trials the bad-trial
+%         percentage is relative to. Defaults to the number of trials in
+%         ``artefactdef``.
+%     cfg.maxpercbad (number, optional): Maximum percentage of bad trials
+%         before a channel is flagged. Defaults to ``40``.
+%     cfg.maxbadchans (int, optional): Maximum number of flagged channels
+%         before the subject is removed. Defaults to ``3``.
+%     cfg.repairchans (str, optional): Whether to interpolate the flagged
+%         channels (``'yes'`` or ``'no'``), by averaging their neighbouring
+%         channels (``ft_channelrepair`` with method ``'average'``, using
+%         neighbours from ``ft_prepare_neighbours`` with triangulation on
+%         the layout matching the recording, see BV_GETLAYOUTTYPE; this is
+%         read from the header of the subject's raw file, else from
+%         ``data.hdr``, and defaults to ``biosemi32.lay`` when neither is
+%         available). Forced to ``'yes'`` when data and artefactdef are
+%         given without ``cfg.currSubject``. Unset means ``'no'``.
+%     cfg.currSubject (str): Subject folder name. Required when data and
+%         artefactdef are not provided.
+%     cfg.inputName (str): Field name in ``subjectdata.PATHS`` used to load
+%         the data. Required when data and artefactdef are not provided.
+%     cfg.artefactData (str): Field name in ``subjectdata.PATHS`` used to
+%         load the artefact struct. Required when data and artefactdef are
+%         not provided.
+%     cfg.pathsFcn (str, optional): Paths function filename. Must resolve
+%         to a valid file on the MATLAB path. Defaults to ``'setPaths'``.
+%     cfg.saveData (str, optional): Whether to save the repaired data
+%         (``'yes'`` or ``'no'``). The data is only saved when
+%         ``cfg.repairchans`` is ``'yes'`` too, since it is unchanged
+%         otherwise. ``Subject.mat`` is saved whenever a subject is
+%         involved, whatever this is set to. Forced to ``'no'`` when data
+%         is provided.
+%     cfg.outputName (str): Label for the output file, its
+%         ``subjectdata.PATHS`` entry, and this run's config in
+%         ``subjectdata.cfgs``. Required when saving data.
+%     cfg.overwrite (str, optional): Whether to overwrite existing output
+%         (``'yes'`` or ``'no'``). Only checked when no data is provided.
+%         Defaults to ``'no'``.
+%     cfg.quiet (str, optional): Suppress command window output
+%         (``'yes'`` or ``'no'``). Defaults to ``'no'``.
+%     data (struct, optional): FieldTrip data structure. If omitted, loaded
+%         from disk using ``cfg.currSubject`` and ``cfg.inputName``.
+%     artefactdef (struct, optional): Artefact struct from
+%         ``bv_createArtefactStruct``. If omitted, loaded from disk using
+%         ``cfg.artefactData``.
 %
-% outputs:
-%   data            : fieldtrip data without removed channels (or with
-%                       repaired channels)
+% Returns:
+%     data (struct): The data, with the flagged channels interpolated when
+%         ``cfg.repairchans`` is ``'yes'``. Empty (``[]``) if the subject
+%         was removed for having too many flagged channels, or if the
+%         output already exists and ``cfg.overwrite`` is ``'no'``.
+%     subjectdata (struct): Updated subject info.
 %
-% the following fields are required in the cfg variable
-%   cfg.lims            = . struct . with limits in number for values found
-%                           in the artefacts struct. Possible fields:
-%                           'kurtosis', 'variance', 'jump', 'abs', 'range',
-%                           'flatline'. Example (cfg.lims.kurtosis = 7)
-%   cfg.maxpercbad      = [ number ]: max percentage of bad trials before a
-%                           channel is removed (default = 40);
-%   cfg.expectedtrials  = [ number ]: number of expected trials in dataset
-%   cfg.repairchans     = 'yes/no': set to 'yes' to interpolate channels
-%                           by weighting neighboring channels 
-%                           (triangulation). Uses ft_channelrepair and
-%                           ft_prepare_neighbours
-%   cfg.quiet           = 'yes/no': set to 'yes' to prevent additional
-%                           details in command window (default: false)
-%
-% the following fields are only required if no data&artefactdef input
-%
-%   cfg.pathsFcn        = 'string': filename of m-file to be read with all
-%                           necessary paths to run this function (default:
-%                           'setPaths'). Is created automatically by
-%                           bv_createNewAnalysis
-%   cfg.currSubject     = 'string': subject folder name to be analyzed
-%   cfg.inputName       = 'string': name of previous analysis to be used 
-%                           for this function, as in 
-%                           subjectdata.PATHS.(prevAnalysis)
-%   cfg.artefactData    = 'string': name of artefact data to be used for 
-%                           this function, as in
-%                           subjectdata.PATHS.(artefactData)
-%   cfg.saveData        = 'yes/no': specifies whether data needs to be
-%                           saved to personal folder
-%   cfg.overwrite       = 'yes/no': set to 'yes' if data is allowed to be
-%                           overwritten (default: 'no')
-%
-% the following fields are required if data is saved
-%   cfg.outputName      = 'string': name for output file. Output will
-%                           be called (currSubject)_(cfg.outputName).mat
-%                           path will be added to subjectdata.PATHS as
-%                           subjectdata.PATHS.(outputName)
-% See also FT_PREPARE_NEIGHBOURS FT_CHANNELREPAIR
-% Copyright (C) 2015-2021, Bauke van der Velde
+% Example:
+%     ```matlab
+%     cfg                = [];
+%     cfg.currSubject    = 'B12345_99m';
+%     cfg.inputName      = 'PREPROC';
+%     cfg.artefactData   = 'ARTFCTBEFORE';
+%     cfg.outputName     = 'PREPROCRMCHANNELS';
+%     cfg.saveData       = 'yes';
+%     cfg.lims.kurtosis  = 10;
+%     cfg.lims.variance  = 2000;
+%     bv_removeChannels(cfg);
+%     ```
 
+%% get options
 lims            = ft_getopt(cfg, 'lims');
-pathsFcn        = ft_getopt(cfg, 'pathsFcn');
+pathsFcn        = ft_getopt(cfg, 'pathsFcn', 'setPaths');
 currSubject     = ft_getopt(cfg, 'currSubject');
 inputName       = ft_getopt(cfg, 'inputName');
 outputName      = ft_getopt(cfg, 'outputName');
@@ -68,40 +95,35 @@ saveData        = ft_getopt(cfg, 'saveData');
 maxpercbad      = ft_getopt(cfg, 'maxpercbad', 40);
 expectedtrials  = ft_getopt(cfg, 'expectedtrials');
 repairchans     = ft_getopt(cfg, 'repairchans');
-overwrite       = ft_getopt(cfg, 'overwrite');
-quiet           = ft_getopt(cfg, 'quiet', false);
+overwrite       = ft_getopt(cfg, 'overwrite', 'no');
+quiet           = ft_getopt(cfg, 'quiet', 'no');
 maxbadchans     = ft_getopt(cfg, 'maxbadchans', 3);
 
-cfgIn = cfg;
-
-if strcmpi(quiet, 'yes')
-    quiet = true;
-else
-    quiet = false;
-end
+quiet = strcmpi(quiet, 'yes');
 
 if isempty(lims)
     error('Please give cfg.lims struct as input')
 end
-if isempty(maxpercbad)
-    error('Please set maximum percentage missing per channel in cfg.maxpercbad')
+if strcmpi(saveData, 'yes') && isempty(outputName)
+    error('cfg.outputName is required when cfg.saveData is ''yes''')
 end
 
+%% load data (if necessary)
+hasSubject = true;
 if nargin < 2 % data loading
-    if isempty(pathsFcn)
-        error('please add paths function cfg.pathsFcn')
-    else
-        eval(pathsFcn)
-    end
-    
+    eval(pathsFcn)
+
     if ~quiet; disp(currSubject); end
     subjectFolderPath = [PATHS.SUBJECTS filesep currSubject];
     if ~quiet
-        [subjectdata] = bv_check4data(subjectFolderPath);
+        [subjectdata, check] = bv_check4data(subjectFolderPath);
     else
-        evalc('[subjectdata] = bv_check4data(subjectFolderPath);');
+        evalc('[subjectdata, check] = bv_check4data(subjectFolderPath);');
     end
-    
+    if ~check %#ok<NODEF>
+        error('%s: Subject.mat not found', currSubject)
+    end
+
     if strcmpi(overwrite, 'no')
         if isfield(subjectdata.PATHS, upper(outputName))
             if exist(subjectdata.PATHS.(upper(outputName)), 'file')
@@ -111,31 +133,36 @@ if nargin < 2 % data loading
             end
         end
     end
-    
+
     if ~quiet
-        [subjectdata, ~, data, artefactdef] = bv_check4data(subjectFolderPath, inputName, artefactData);
+        [subjectdata, check, data, artefactdef] = bv_check4data(subjectFolderPath, inputName, artefactData);
     else
-        evalc('[subjectdata, ~, data, artefactdef] = bv_check4data(subjectFolderPath, inputName, artefactData);');
+        evalc('[subjectdata, check, data, artefactdef] = bv_check4data(subjectFolderPath, inputName, artefactData);');
     end
-    
-    subjectdata.cfgs.(outputName) = cfg;
+    if ~check %#ok<NODEF>
+        error('%s: input data not found', currSubject)
+    end
+
+    if ~isempty(outputName)
+        subjectdata.cfgs.(outputName) = cfg;
+    end
 elseif isfield(cfg, 'currSubject')
-    if isempty(pathsFcn)
-        error('please add paths function cfg.pathsFcn')
-    else
-        eval(pathsFcn)
-    end
+    eval(pathsFcn)
 
     if ~quiet; disp(currSubject); end
     subjectFolderPath = [PATHS.SUBJECTS filesep currSubject];
     if ~quiet
-        [subjectdata] = bv_check4data(subjectFolderPath);
+        [subjectdata, check] = bv_check4data(subjectFolderPath);
     else
-        evalc('[subjectdata] = bv_check4data(subjectFolderPath);');
+        evalc('[subjectdata, check] = bv_check4data(subjectFolderPath);');
+    end
+    if ~check %#ok<NODEF>
+        error('%s: Subject.mat not found', currSubject)
     end
     saveData = 'no';
 else
     subjectdata = struct;
+    hasSubject = false;
     repairchans = 'yes';
     saveData = 'no';
 end
@@ -144,17 +171,22 @@ if isempty(expectedtrials)
     expectedtrials = size(artefactdef.sampleinfo,1);
 end
 
+%% flag bad channels
 if ~quiet; fprintf('\t checking for channels to remove ... \n'); end
-% artefact detection
+
+% a trial is bad for a channel if any metric exceeds its limit
 limFields = fieldnames(lims);
+missingMetrics = limFields(~isfield(artefactdef, limFields));
+if ~isempty(missingMetrics)
+    error('cfg.lims has fields that are not in the artefact struct: %s', ...
+        strjoin(missingMetrics, ', '))
+end
 for i = 1:length(limFields)
     cField = limFields{i};
-    
-    out(:,:,i) = artefactdef.(cField).levels > lims.(cField);
-    
-end
 
-allOut = any(out,3);
+    out(:,:,i) = artefactdef.(cField).levels > lims.(cField);
+
+end
 
 % badchannel calculation
 badchans = data.label(((sum(sum(out,3)>0,2) / expectedtrials) * 100 ) > maxpercbad);
@@ -168,9 +200,21 @@ subjectdata.noisyChannels = ...
     not(contains(limFields, 'flat'))),3)>0,2) / expectedtrials) * 100 ) > ...
     maxpercbad);
 subjectdata.nChannels = length(data.label);
-subjectdata.interpolatedChannels = cell(0);
 
+% channels interpolated by earlier steps stay on record
+if ~isfield(subjectdata, 'interpolatedChannels')
+    subjectdata.interpolatedChannels = cell(0);
+end
+
+%% remove the subject if too many channels are bad
 if length(subjectdata.flaggedChannels) > maxbadchans
+    if ~hasSubject
+        warning('%d channels flagged, more than cfg.maxbadchans (%d): returning empty data', ...
+            length(subjectdata.flaggedChannels), maxbadchans)
+        data = [];
+        return
+    end
+
     % removingSubjects reloads subjectdata fresh from Subject.mat, so the
     % channel-list fields just set above (flaggedChannels/flatChannels/
     % noisyChannels/nChannels) need to be on disk first, or they're lost -
@@ -181,63 +225,85 @@ if length(subjectdata.flaggedChannels) > maxbadchans
     else
         evalc('bv_saveData(subjectdata);');
     end
-    removingSubjects([], currSubject, 'too many noisy channels')
+    rmCfg = [];
+    rmCfg.pathsFcn = pathsFcn;
+    removingSubjects(rmCfg, currSubject, 'too many noisy channels')
     data = [];
     return
 end
 
+%% repair the flagged channels (if asked for)
 if not(isempty(subjectdata.flaggedChannels))
     if ~quiet; fprintf(['\t \t bad channels detected: ' repmat('%s,', 1, length(badchans)) '\n'], badchans{:}); end
-    
-    % unreachable: the identical check above (~line 173) already returns
-    % whenever this condition holds, so execution never reaches here with
-    % length(flaggedChannels) > maxbadchans. Pre-existing dead code, left
-    % as-is/harmless.
-    if length(subjectdata.flaggedChannels) > maxbadchans
-        removingSubjects([], currSubject, 'too many noisy channels')
-        data = [];
-        return
-    end
-
 
     % badchannel interpolation
-    if strcmpi(repairchans, 'yes') 
+    if strcmpi(repairchans, 'yes')
         if ~quiet; fprintf('\t repairing ... '); end
         cfg = [];
         cfg.method          = 'triangulation';
-        cfg.template        = 'EEG1010';
-        cfg.layout          = 'biosemi32.lay';
+        cfg.layout          = getRepairLayout(data, subjectdata);
         cfg.feedback        = 'no';
         evalc('neighbours = ft_prepare_neighbours(cfg, data);');
-        
+
+        % the flagged channels are still part of data, so they are bad
+        % channels, not missing ones (ft_channelrepair errors on missing
+        % channels that are present in the data). 'average' only needs the
+        % neighbours
         cfg = [];
-        cfg.missingchannel = subjectdata.flaggedChannels';
-        cfg.method = 'weighted';
+        cfg.badchannel = subjectdata.flaggedChannels';
+        cfg.method = 'average';
         cfg.neighbours = neighbours;
-        cfg.layout = 'biosemi32.lay';
         evalc('data = ft_channelrepair(cfg, data);');
-        subjectdata.interpolatedChannels = subjectdata.flaggedChannels;
+
+        % keep a record of ALL channels interpolated so far (also by other
+        % steps, e.g. bv_preprocResample), not just those of this call
+        interpolatedBefore = {};
+        if ~isempty(subjectdata.interpolatedChannels)
+            interpolatedBefore = cellstr(subjectdata.interpolatedChannels);
+        end
+        subjectdata.interpolatedChannels = unique( ...
+            [interpolatedBefore(:); subjectdata.flaggedChannels(:)], 'stable');
         if ~quiet; fprintf('done! \n'); end
     else
         if ~quiet; fprintf('\t added to subjectdata struct \n'); end
     end
 end
 
-if strcmpi(saveData, 'yes')
+%% save data
+% Subject.mat is saved whenever a subject is involved; the data only when
+% it was repaired (it is unchanged otherwise)
+if strcmpi(saveData, 'yes') && strcmpi(repairchans, 'yes')
     if ~quiet
-        if strcmpi(repairchans, 'yes')
-            bv_saveData(subjectdata, data, outputName); % save both data and subjectdata to the drive
-        else
-            bv_saveData(subjectdata);
-        end
+        bv_saveData(subjectdata, data, outputName); % save both data and subjectdata to the drive
     else
-        if strcmpi(repairchans, 'yes')
-            evalc('bv_saveData(subjectdata, data, outputName);'); % save both data and subjectdata to the drive
-        else
-            evalc('bv_saveData(subjectdata);');
-        end
+        evalc('bv_saveData(subjectdata, data, outputName);'); % save both data and subjectdata to the drive
     end
-else
-    bv_saveData(subjectdata)
+elseif hasSubject
+    if ~quiet
+        bv_saveData(subjectdata);
+    else
+        evalc('bv_saveData(subjectdata);');
+    end
 end
 
+end
+
+
+function layout = getRepairLayout(data, subjectdata)
+% Layout for the neighbours of the channel repair: determined from the
+% header of the subject's raw file, else of the data, via BV_GETLAYOUTTYPE.
+% Defaults to biosemi32.lay when no header is available.
+layout = 'biosemi32.lay';
+
+hdr = [];
+if isfield(subjectdata, 'PATHS') && isfield(subjectdata.PATHS, 'HDRFILE') && ...
+        exist(subjectdata.PATHS.HDRFILE, 'file')
+    evalc('hdr = ft_read_header(subjectdata.PATHS.HDRFILE);');
+elseif isfield(data, 'hdr')
+    hdr = data.hdr;
+end
+
+if ~isempty(hdr)
+    layout = bv_getLayoutType(hdr);
+end
+end

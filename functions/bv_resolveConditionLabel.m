@@ -5,14 +5,24 @@ function label = bv_resolveConditionLabel(code, conditionLabels)
 %
 % Shared by the per-subject metric functions that accept a
 % cfg.conditionLabels option (bv_extractROIPower, bv_calculateStrength,
-% bv_calculateSWP, gr_calculateQModularity).
+% bv_calculateSWP, gr_calculateQModularity, gr_calculateBetweennessCentrality,
+% gr_calculateClusteringWs, gr_calculatePathlengthWs).
 %
 % Args:
-%     code (numeric): Condition code to resolve.
-%     conditionLabels (containers.Map): Map from condition code to label.
+%     code (numeric): Condition code to resolve (a scalar).
+%     conditionLabels (containers.Map): Map from condition code (double
+%         keys) to label.
 %
 % Returns:
 %     label (str): The mapped label, or ``num2str(code)`` if unmapped.
+%
+% Example:
+%     ```matlab
+%     labels = containers.Map('KeyType', 'double', 'ValueType', 'any');
+%     labels(129) = 'NonSocial';
+%     bv_resolveConditionLabel(129, labels)   % 'NonSocial'
+%     bv_resolveConditionLabel(139, labels)   % '139'
+%     ```
 
 if isa(conditionLabels, 'containers.Map') && isKey(conditionLabels, code)
     label = conditionLabels(code);

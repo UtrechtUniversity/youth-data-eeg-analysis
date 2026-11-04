@@ -230,7 +230,7 @@ end
 eps_val = 1e-12;
 
 %% helper: resolve a display label for a condition code
-resolveLabel = @(code) resolveConditionLabel(code, conditionLabels);
+resolveLabel = @(code) bv_resolveConditionLabel(code, conditionLabels);
 
 %% build the list of (label, trial-index-set, nEpochs) groups to average:
 % one per requested condition, plus one Global (pooled) group
@@ -430,14 +430,3 @@ if strcmpi(saveData, 'yes')
 end
 
 end % function bv_extractROIPower
-
-
-function label = resolveConditionLabel(code, conditionLabels)
-% Resolves a numeric condition code to a display label via conditionLabels
-% (a containers.Map), falling back to the stringified code when unmapped.
-if isa(conditionLabels, 'containers.Map') && isKey(conditionLabels, code)
-    label = conditionLabels(code);
-else
-    label = num2str(code);
-end
-end

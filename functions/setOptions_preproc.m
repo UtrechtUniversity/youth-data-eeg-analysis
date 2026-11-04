@@ -74,6 +74,7 @@ OPTIONS.RMCHANNELS.maxbadchans     = OPTIONS.maxbadchans;
 OPTIONS.RMCHANNELS.maxpercbad      = 40;
 OPTIONS.RMCHANNELS.expectedtrials  = 360./OPTIONS.artifacttrllength;
 OPTIONS.RMCHANNELS.repairchans     = 'no';
+OPTIONS.RMCHANNELS.overwrite       = 'yes'; % outputName is also the REREF step's output, so without this a re-run would skip this step once that output exists
 
 %% Preprocessing + reref options without removed channels
 % options only used for the preprocessing of the data

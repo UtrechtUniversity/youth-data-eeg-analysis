@@ -30,12 +30,15 @@ function data = bv_cleanData(cfg, data, artefactdef)
 %     cfg.pathsFcn (str): Paths function filename. Must resolve to a valid
 %         file on the MATLAB path. Required when no data is provided.
 %     cfg.saveCleanData (str, optional): When no data is provided, whether
-%         to skip re-running this step if ``cfg.outputName`` already exists
-%         on disk (``'yes'`` or ``'no'``). Checked before loading input
-%         data; independent of ``cfg.saveData``, which controls whether the
+%         an existing output makes this step skip (``'yes'`` or ``'no'``).
+%         The step is skipped, returning empty data, if this is ``'yes'``,
+%         ``cfg.overwrite`` is ``'no'``, and the output registered in
+%         ``subjectdata.PATHS`` under ``cfg.outputName`` exists on disk.
+%         Independent of ``cfg.saveData``, which controls whether the
 %         result is saved at the end. Treated as ``'no'`` if omitted.
 %     cfg.overwrite (str, optional): Whether to overwrite existing output
-%         (``'yes'`` or ``'no'``). Defaults to ``'no'``.
+%         (``'yes'`` or ``'no'``); see ``cfg.saveCleanData``. Defaults to
+%         ``'no'``.
 %     cfg.quiet (str, optional): Suppress command window output
 %         (``'yes'`` or ``'no'``). Defaults to ``'no'``.
 %     data (struct, optional): FieldTrip data structure. If omitted, loaded
@@ -92,14 +95,28 @@ end
 saveSubjectData = 'no';
 if nargin < 2
     if isempty(pathsFcn)
-        error('please add options function cfg.optionsFcn')
+        error('please add paths function cfg.pathsFcn')
     else
         eval(pathsFcn)
     end
 
     subjectFolderPath = [PATHS.SUBJECTS filesep currSubject];
-    if strcmpi(overwrite, 'no') & strcmpi(saveCleanData, 'yes') & ...
-            exist([subjectFolderPath filesep currSubject '_' upper(outputName) '.mat'], 'file')
+
+    if ~quiet
+        disp(currSubject);
+        [subjectdata, check] = bv_check4data(subjectFolderPath);
+    else
+        evalc('[subjectdata, check] = bv_check4data(subjectFolderPath);');
+    end
+    if ~check %#ok<NODEF>
+        error('%s: Subject.mat not found', currSubject)
+    end
+
+    % skip if the output already exists (bv_saveData registers its path in
+    % subjectdata.PATHS under the upper-cased output name)
+    if strcmpi(overwrite, 'no') && strcmpi(saveCleanData, 'yes') && ...
+            isfield(subjectdata.PATHS, upper(outputName)) && ...
+            exist(subjectdata.PATHS.(upper(outputName)), 'file')
         if ~quiet
             fprintf('\t ⚠ %s already found, not overwriting ... \n', upper(outputName))
         end
@@ -108,25 +125,32 @@ if nargin < 2
     end
 
     if ~quiet
-        disp(currSubject);
-        [subjectdata, ~, data, artefactdef] = bv_check4data(subjectFolderPath, inputName, artefactData);
+        [subjectdata, check, data, artefactdef] = bv_check4data(subjectFolderPath, inputName, artefactData);
     else
-        evalc('[subjectdata, ~, data, artefactdef] = bv_check4data(subjectFolderPath, inputName, artefactData);');
+        evalc('[subjectdata, check, data, artefactdef] = bv_check4data(subjectFolderPath, inputName, artefactData);');
+    end
+    if ~check %#ok<NODEF>
+        error('%s: input data not found', currSubject)
     end
 
-    subjectdata.cfgs.(outputName) = cfg;
+    if ~isempty(outputName)
+        subjectdata.cfgs.(outputName) = cfg;
+    end
 elseif isfield(cfg, 'currSubject')
     if isempty(pathsFcn)
-        error('please add options function cfg.optionsFcn')
+        error('please add paths function cfg.pathsFcn')
     else
         eval(pathsFcn)
     end
     subjectFolderPath = [PATHS.SUBJECTS filesep currSubject];
     if ~quiet
         disp(currSubject);
-        [subjectdata] = bv_check4data(subjectFolderPath);
+        [subjectdata, check] = bv_check4data(subjectFolderPath);
     else
-        evalc('[subjectdata] = bv_check4data(subjectFolderPath);');
+        evalc('[subjectdata, check] = bv_check4data(subjectFolderPath);');
+    end
+    if ~check
+        error('%s: Subject.mat not found', currSubject)
     end
     saveSubjectData = 'yes';
 else
