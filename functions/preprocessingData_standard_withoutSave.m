@@ -1,10 +1,16 @@
-% This is an overview script of all the preprocessing steps needed taken to
-% calculate the networks in EEG data. This is the version of the script
-% that doesn't save intermediate steps. This is generally not
-% recommendended, but if you have limited space on your harddrive, this is
-% the script to use.
-%
-% Written by Bauke van der Velde, 2018-2024
+%% PREPROCESSING PIPELINE WITHOUT SAVING INTERMEDIATE STEPS
+% Overview script of all the preprocessing steps needed before analysing EEG
+% data, without saving intermediate steps: every subject goes through all
+% steps in one go, handing the data from one step to the next in memory
+% (see PREPROCSESSINGDATA_STANDARD for the steps and what they save). Only
+% the final appended data and Subject.mat (which also holds the results of
+% the intermediate steps, e.g. the removed channels) are saved. This is
+% generally not recommended, but if you have limited space on your
+% harddrive, this is the script to use. A subject that fails a step is
+% removed (see REMOVINGSUBJECTS).
+
+%% settings
+quiet = 'no';
 
 %% setup subject folders
 clear OPTIONS; setOptions
@@ -12,75 +18,92 @@ clear OPTIONS; setOptions
 cfg = OPTIONS.CREATEFOLDERS;
 bv_createSubjectFolders_NewStruct(cfg);
 
-%% PREPROCESSING AND RESAMPLING
+%% PREPROCESS EVERY SUBJECT
 clear OPTIONS; setOptions
+
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
 subjectFolderNames = subjectFolderNames(startSubject:endSubject);
 
-for iSubjects = 1:length(subjectFolderNames)
+for iSubjects = 1:numel(subjectFolderNames)
+    currSubject = subjectFolderNames{iSubjects};
+
     try
-        currSubject = subjectFolderNames{iSubjects};
+        % 1) PREPROCESSING AND RESAMPLING
         cfg             = OPTIONS.PREPROC;
         cfg.currSubject = currSubject;
-        cfg.quiet       = 'yes';
+        cfg.quiet       = quiet;
         cfg.saveData    = 'no';
 
         data = bv_preprocResample(cfg);
+        if isempty(data); continue; end     % subject was removed
 
-        %% CALCULATE ARTEFACTS IN PREPROC DATA
-
+        % 2) CALCULATE ARTEFACTS IN PREPROC DATA
         cfg             = OPTIONS.ARTFCTPREPROC;
         cfg.currSubject = currSubject;
-        cfg.quiet       = 'yes';
+        cfg.quiet       = quiet;
         cfg.saveData    = 'no';
 
         artefactdef = bv_createArtefactStruct(cfg, data);
+        if isempty(artefactdef); continue; end
 
-        %% SET CHANNELS TO REMOVE
-
+        % 3) SET CHANNELS TO REMOVE
+        % The flagged channels are written to Subject.mat, from where the
+        % next preprocessing step reads them.
         cfg             = OPTIONS.RMCHANNELS;
         cfg.currSubject = currSubject;
-        cfg.quiet       = 'yes';
+        cfg.quiet       = quiet;
         cfg.saveData    = 'no';
 
-        [data, sdata] = bv_removeChannels(cfg, data, artefactdef);
+        data = bv_removeChannels(cfg, data, artefactdef);
+        if isempty(data); continue; end
 
-        %% PREPROCESSING AGAIN WITH REREF AND WITHOUT REMOVED CHANNELS
-
+        % 4) PREPROCESSING AGAIN WITH REREF AND WITHOUT REMOVED CHANNELS
+        % Reads the raw data again, so the data of step 1 is not needed.
         cfg             = OPTIONS.REREF;
         cfg.currSubject = currSubject;
-        cfg.quiet       = 'yes';
+        cfg.quiet       = quiet;
         cfg.saveData    = 'no';
 
         data = bv_preprocResample(cfg);
+        if isempty(data); continue; end
 
-        %% CALCULATE ARTEFACTS IN EEG DATA WITHOUT POOR CHANNELS
-
+        % 5) CALCULATE ARTEFACTS IN EEG DATA WITHOUT POOR CHANNELS
         cfg             = OPTIONS.ARTFCTRMCHANNELS;
         cfg.currSubject = currSubject;
-        cfg.quiet       = 'yes';
+        cfg.quiet       = quiet;
         cfg.saveData    = 'no';
 
         artefactdef = bv_createArtefactStruct(cfg, data);
+        if isempty(artefactdef); continue; end
 
-        %% REMOVE TRIALS
-
+        % 6) REMOVE TRIALS
         cfg             = OPTIONS.CLEANED;
         cfg.currSubject = currSubject;
-        cfg.quiet       = 'yes';
+        cfg.quiet       = quiet;
         cfg.saveData    = 'no';
 
         data = bv_cleanData(cfg, data, artefactdef);
+        if isempty(data); continue; end
 
-        %% APPEND DATA
-
+        % 7) APPEND DATA (the only output that is saved)
         cfg             = OPTIONS.APPENDED;
         cfg.currSubject = currSubject;
-        cfg.quiet       = 'yes';
+        cfg.quiet       = quiet;
         cfg.saveData    = 'yes';
 
         data = bv_appendfieldtripdata(cfg, data);
-    catch
-        warning([subjectFolderNames{iSubjects}, ': %s'], lasterr)
+    catch ME
+        warning('%s: %s', currSubject, ME.message);
+        removingSubjects([], currSubject, ME.message);
     end
 end
+
+%% UPDATE SUBJECT SUMMARY
+% Subject.mat is always saved; here it is merged into the shared
+% SubjectSummary.mat (also for the subjects that were removed on the way).
+for iSubjects = 1:numel(subjectFolderNames)
+    bv_syncSubjectSummary(subjectFolderNames{iSubjects});
+end
+
+%% COLLECT SUBJECT SUMMARY (cross-subject CSV)
+bv_collectSubjectSummary(OPTIONS.SUBJECTSUMMARY);

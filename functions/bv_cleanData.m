@@ -50,7 +50,8 @@ function data = bv_cleanData(cfg, data, artefactdef)
 % Returns:
 %     data (struct): FieldTrip data with artefact trials removed. Returns
 %         empty (``[]``) if output already exists and ``cfg.overwrite`` is
-%         ``'no'``.
+%         ``'no'``, or if no clean trials are left (the subject is then
+%         removed, see REMOVINGSUBJECTS).
 %
 % Example:
 %     Load data and artefacts from disk, reject trials, and save:
@@ -152,6 +153,9 @@ elseif isfield(cfg, 'currSubject')
     if ~check
         error('%s: Subject.mat not found', currSubject)
     end
+    if ~isempty(outputName)
+        subjectdata.cfgs.(outputName) = cfg;
+    end
     saveSubjectData = 'yes';
 else
     subjectdata = struct;
@@ -186,6 +190,7 @@ cfg = [];
 cfg.trl = [artefactdef.sampleinfo(goodTrialIndx,:), zeros(length(goodTrialIndx),1)];
 if isempty(cfg.trl)
     removingSubjects([],currSubject, 'no clean trials found')
+    data = [];
     return
 end
 evalc('data = ft_redefinetrial(cfg, data);');

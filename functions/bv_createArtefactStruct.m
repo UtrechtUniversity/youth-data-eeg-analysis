@@ -124,7 +124,9 @@ if nargin < 2
         error('%s: input data not found', currSubject)
     end
 
-    subjectdata.cfgs.(outputName) = cfgIn;
+    if ~isempty(outputName)
+        subjectdata.cfgs.(outputName) = cfgIn;
+    end
 else
     if isfield(cfg, 'currSubject')
         if isempty(pathsFcn)
@@ -144,6 +146,9 @@ else
             error('%s: Subject.mat not found', currSubject)
         end
 
+        if ~isempty(outputName)
+            subjectdata.cfgs.(outputName) = cfgIn;
+        end
         saveSubjectData = 'yes';
     end
     saveData = 'no';

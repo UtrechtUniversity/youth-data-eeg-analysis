@@ -159,6 +159,9 @@ elseif isfield(cfg, 'currSubject')
     if ~check %#ok<NODEF>
         error('%s: Subject.mat not found', currSubject)
     end
+    if ~isempty(outputName)
+        subjectdata.cfgs.(outputName) = cfg;
+    end
     saveData = 'no';
 else
     subjectdata = struct;

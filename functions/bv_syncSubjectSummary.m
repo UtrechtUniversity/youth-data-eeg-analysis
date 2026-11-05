@@ -11,12 +11,15 @@ function bv_syncSubjectSummary(currSubject, pathsFcn)
 % loop iteration in preprocessingData_*.m, powerEstimates_*.m
 % and networkMetrics_*.m, after whatever step just ran.
 %
-% Does nothing (quietly) if:
-%   - the subject folder no longer exists under ``PATHS.SUBJECTS``: it was
-%     already moved to ``PATHS.REMOVED`` by REMOVINGSUBJECTS, which updates
-%     the summary itself before moving the folder, or
-%   - ``SubjectSummary.mat`` doesn't exist yet.
-% Warns and does nothing if the subject folder has no Subject.mat.
+% If the subject folder is no longer under ``PATHS.SUBJECTS`` because
+% REMOVINGSUBJECTS moved it to ``PATHS.REMOVED``, the Subject.mat there is
+% used. This is how the removal of subjects in a parallel loop ends up in
+% the summary (REMOVINGSUBJECTS does not touch the shared file on a parallel
+% worker, see that function).
+%
+% Does nothing (quietly) if the subject folder exists in neither place, or
+% ``SubjectSummary.mat`` doesn't exist yet. Warns and does nothing if the
+% subject folder has no Subject.mat.
 %
 % Args:
 %     currSubject (str): Subject folder name.
@@ -36,6 +39,10 @@ eval(pathsFcn)
 
 subjectFolderPath = fullfile(PATHS.SUBJECTS, currSubject);
 summaryPath       = fullfile(PATHS.SUMMARY, 'SubjectSummary.mat');
+
+if ~exist(subjectFolderPath, 'dir')
+    subjectFolderPath = fullfile(PATHS.REMOVED, currSubject);
+end
 
 if ~exist(subjectFolderPath, 'dir') || ~exist(summaryPath, 'file')
     return

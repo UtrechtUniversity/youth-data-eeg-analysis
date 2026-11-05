@@ -1,6 +1,18 @@
-%% BEFORE WE START'
-% This is an overview script of all the preprocessing steps needed to be
-% taken before analyzing EEG data.
+%% PREPROCESSING PIPELINE
+% Overview script of all the preprocessing steps needed before analysing EEG
+% data. Every step runs over all subjects before the next step starts and
+% saves its output to the subject folder, so that a step can be redone
+% without redoing the earlier ones. A subject that fails a step is removed
+% (see REMOVINGSUBJECTS) and left out of the next steps. After every step
+% the subject's Subject.mat is merged into the shared SubjectSummary.mat.
+%
+% Variants of this script (BV_CREATENEWANALYSIS picks one):
+%   preprocessingData_standard                      this script
+%   preprocessingData_standard_parfor               same, in parallel
+%   preprocessingData_standard_withoutSave          one pass per subject,
+%                                                   no intermediate files
+%   preprocessingData_standard_withoutSave_parfor   same, in parallel
+
 %% setup subject folders
 clear OPTIONS; setOptions
 cfg = OPTIONS.CREATEFOLDERS;

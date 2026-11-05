@@ -9,7 +9,11 @@ function removingSubjects(cfg, currSubject, reason)
 % is then moved from ``PATHS.SUBJECTS`` to ``PATHS.REMOVED``,
 % ``subjectdata.PATHS.SUBJECTDIR`` is updated to the new location, and
 % Subject.mat is saved there. If SubjectSummary.mat exists, the subject's
-% row in it is updated too.
+% row in it is updated too - except when running on a parallel worker
+% (parfor), where several workers writing the shared file at the same time
+% would overwrite each other's rows. In that case the summary is left to
+% BV_SYNCSUBJECTSUMMARY, which the calling script runs once the parallel
+% loop has finished (it also picks up subjects in ``PATHS.REMOVED``).
 %
 % If a folder with the same name already exists in ``PATHS.REMOVED`` (the
 % subject was removed in an earlier run), a warning is issued and nothing
@@ -73,7 +77,8 @@ movefile(subjectFolderPath, PATHS.REMOVED)
 subjectdata.PATHS.SUBJECTDIR = removedFolderPath;
 evalc('bv_saveData(subjectdata);');
 
-if exist([PATHS.SUMMARY filesep 'SubjectSummary.mat'], 'file')
+onWorker = exist('getCurrentTask', 'file') && ~isempty(getCurrentTask());
+if ~onWorker && exist([PATHS.SUMMARY filesep 'SubjectSummary.mat'], 'file')
     bv_updateSubjectSummary([PATHS.SUMMARY filesep 'SubjectSummary'], bv_stripSummaryOnlyFields(subjectdata))
 end
 fprintf('done! \n')
