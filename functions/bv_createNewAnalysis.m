@@ -7,12 +7,22 @@ function bv_createNewAnalysis(str, overwrite)
 % ``Subjects`` (with a ``removed`` subfolder), and ``summary``
 % subfolders, plus ``log.txt``, ``setPaths.m``, ``setOptions.m``,
 % ``preprocessingData.m``, ``setOptionsPower.m``, ``powerEstimates.m``,
-% ``setOptionsNetmet.m``, and ``networkMetrics.m``. If
-% ``preprocessingData.m`` needs to be (re)created, interactively prompts
-% (via ``questdlg``) for whether to use parallel processing and whether
-% to save intermediate steps, then copies the matching
-% ``preprocessingData_standard*`` template. Ends by changing the current
-% directory to the new analysis folder.
+% ``setOptionsNetmet.m``, and ``networkMetrics.m``.
+%
+% ``preprocessingData.m`` and ``powerEstimates.m`` come in four variants
+% (``preprocessingData_standard*`` and ``powerEstimates_standard*``, with
+% the suffixes ``_parfor``, ``_withoutSave`` or ``_withoutSave_parfor``).
+% The function always prompts (via ``questdlg``) for whether to use
+% parallel processing and whether to save intermediate steps, and the
+% answers apply to both scripts. A script that does not exist yet is
+% created. A script that already exists is kept if it is the variant picked,
+% and replaced by the picked variant if it is another one (including any
+% edits made to it, even if ``overwrite`` is ``false``). The variant of an
+% existing script is recognised from its contents (a ``parfor`` loop, and
+% the 'WITHOUT SAVING INTERMEDIATE STEPS' title). If a dialog is closed
+% without answering, existing scripts are left as they are, and new ones
+% get the default (no parallel processing, save intermediate steps). Ends by
+% changing the current directory to the new analysis folder.
 %
 % Args:
 %     str (str): Label appended to today's date (``yyyymmdd``) to form
@@ -21,7 +31,8 @@ function bv_createNewAnalysis(str, overwrite)
 %         alone.
 %     overwrite (bool, optional): Whether to recreate each script and
 %         ``log.txt`` if today's analysis folder (and those files)
-%         already exist. Defaults to ``false``.
+%         already exist, regardless of the variant picked. Defaults to
+%         ``false``.
 %
 % Example:
 %     ```matlab
@@ -87,43 +98,16 @@ end
 
 setOptionsExist = createScriptFromTemplate(PATHS.CURRANALYSIS, 'setOptions.m', 'setOptions_preproc', overwrite);
 
-fprintf('\t')
-if ~overwrite && exist([PATHS.CURRANALYSIS filesep 'preprocessingData.m'], 'file')
-    preprocessExist = true(1);
-    fprintf('preprocessingData.m already exists, not overwriting \n')
-else
-    config = '';
-    parprocess = questdlg('Will you use parallel processing?', ...
-        'Parallel processing', 'Yes', 'No', 'No');
-    saveIntermediate = questdlg('Would you like intermediate steps to be saved?', ...
-        'Save intermediate steps', 'Yes', 'No', 'Yes');
+% preprocessingData.m and powerEstimates.m come in the same four variants
+% (see askVariantSuffix), chosen once for both
+[variantSuffix, cancelled] = askVariantSuffix();
 
-    if strcmpi(parprocess, 'Yes')
-        config = [config, '-parprocess'];
-    end
-
-    if strcmpi(saveIntermediate, 'Yes')
-        config = [config, '-saveintermediate'];
-    end
-
-    switch config
-        case '-parprocess-saveintermediate'
-            template = 'preprocessingData_standard_parfor';
-        case '-parprocess'
-            template = 'preprocessingData_standard_withoutSave_parfor';
-        case '-saveintermediate'
-            template = 'preprocessingData_standard';
-        case ''
-            template = 'preprocessingData_standard_withoutSave';
-        otherwise
-            error('unknown configuration')
-    end
-
-    preprocessExist = copyTemplate(PATHS.CURRANALYSIS, 'preprocessingData.m', template);
-end
+preprocessExist = placeVariantScript(PATHS.CURRANALYSIS, 'preprocessingData.m', ...
+    'preprocessingData_standard', variantSuffix, cancelled, overwrite);
 
 setPowerOptionsExist  = createScriptFromTemplate(PATHS.CURRANALYSIS, 'setOptionsPower.m', 'setOptions_power', overwrite);
-powerEstimatesExist   = createScriptFromTemplate(PATHS.CURRANALYSIS, 'powerEstimates.m', 'powerEstimates_standard', overwrite);
+powerEstimatesExist   = placeVariantScript(PATHS.CURRANALYSIS, 'powerEstimates.m', ...
+    'powerEstimates_standard', variantSuffix, cancelled, overwrite);
 setNetmetOptionsExist = createScriptFromTemplate(PATHS.CURRANALYSIS, 'setOptionsNetmet.m', 'setOptions_netmet', overwrite);
 networkMetricsExist   = createScriptFromTemplate(PATHS.CURRANALYSIS, 'networkMetrics.m', 'networkMetrics_standard', overwrite);
 
@@ -145,6 +129,61 @@ end
 
 cd(PATHS.CURRANALYSIS)
 
+end
+
+function [suffix, cancelled] = askVariantSuffix()
+% Asks whether to use parallel processing and whether to save intermediate
+% steps, and returns the template name suffix for that choice: ``''``
+% (serial, saves intermediate steps), ``'_parfor'``, ``'_withoutSave'`` or
+% ``'_withoutSave_parfor'``. ``cancelled`` is true if a dialog was closed
+% without answering; the suffix is then that of the default buttons (no
+% parallel processing, save intermediate steps).
+parprocess = questdlg('Will you use parallel processing?', ...
+    'Parallel processing', 'Yes', 'No', 'No');
+saveIntermediate = questdlg('Would you like intermediate steps to be saved?', ...
+    'Save intermediate steps', 'Yes', 'No', 'Yes');
+
+cancelled = isempty(parprocess) || isempty(saveIntermediate);
+
+suffix = '';
+if strcmpi(saveIntermediate, 'No')
+    suffix = [suffix '_withoutSave'];
+end
+if strcmpi(parprocess, 'Yes')
+    suffix = [suffix '_parfor'];
+end
+end
+
+function ok = placeVariantScript(analysisFolder, targetName, templateBase, suffix, cancelled, overwrite)
+% Puts the variant ``[templateBase suffix]`` in analysisFolder as
+% targetName: creates it if missing, keeps an existing script of the same
+% variant (or any existing script when the prompt was cancelled), and
+% replaces an existing script of another variant.
+target = [analysisFolder filesep targetName];
+fprintf('\t')
+if ~overwrite && exist(target, 'file')
+    if cancelled || strcmp(detectVariantSuffix(target), suffix)
+        ok = true(1);
+        fprintf('%s already exists, not overwriting \n', targetName)
+        return
+    end
+    fprintf('%s exists with other variant, replacing it ... ', targetName)
+end
+ok = copyTemplate(analysisFolder, targetName, [templateBase suffix]);
+end
+
+function suffix = detectVariantSuffix(scriptPath)
+% Recognises the variant of a preprocessingData/powerEstimates script from
+% its contents: a parfor loop makes it parallel, the title of the
+% withoutSave templates makes it a script without intermediate steps.
+txt = fileread(scriptPath);
+suffix = '';
+if ~isempty(regexp(txt, '^%% [^\n]*WITHOUT SAVING INTERMEDIATE STEPS', 'once', 'lineanchors'))
+    suffix = [suffix '_withoutSave'];
+end
+if ~isempty(regexp(txt, '^\s*parfor\s*\(', 'once', 'lineanchors'))
+    suffix = [suffix '_parfor'];
+end
 end
 
 function ok = createScriptFromTemplate(analysisFolder, targetName, templateName, overwrite)

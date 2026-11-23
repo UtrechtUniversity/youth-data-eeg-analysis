@@ -19,8 +19,10 @@ function data = bv_redefineTriallength(cfg, data)
 %     cfg.pathsFcn (str, optional): Paths function filename. Must resolve
 %         to a valid file on the MATLAB path. Defaults to ``'setPaths'``.
 %     cfg.saveData (str, optional): Whether to save the output to disk
-%         (``'yes'`` or ``'no'``). Forced to ``'no'`` when data is
-%         provided without ``cfg.currSubject``. Defaults to ``'no'``.
+%         (``'yes'`` or ``'no'``). Subject.mat is saved regardless of
+%         what this is set to. Requires ``cfg.currSubject``. Forced to
+%         ``'no'`` when data is provided without ``cfg.currSubject``.
+%         Defaults to ``'no'``.
 %     cfg.outputName (str): Label for the output file and its
 %         ``subjectdata.PATHS`` entry. Required when saving data.
 %     cfg.overwrite (str, optional): Whether to overwrite existing output
@@ -111,6 +113,7 @@ if nargin < 2 % data loading
     if ~isempty(outputName)
         subjectdata.cfgs.(outputName) = cfg;
     end
+    saveSubjectData = 'yes';
 elseif isfield(cfg, 'currSubject')
     eval(pathsFcn)
 
@@ -123,6 +126,9 @@ elseif isfield(cfg, 'currSubject')
     end
     if ~check %#ok<NODEF>
         error('%s: Subject.mat not found', currSubject)
+    end
+    if ~isempty(outputName)
+        subjectdata.cfgs.(outputName) = cfg;
     end
     saveSubjectData = 'yes';
 else

@@ -6,10 +6,13 @@ function freq = bv_calculateFrequency(cfg, data)
 %         is provided.
 %     cfg.inputName (str): Field name in ``subjectdata.PATHS`` used to load
 %         input data. Required when no data is provided.
-%     cfg.saveData (str): Whether to save output to disk (``'yes'`` or
-%         ``'no'``). Defaults to ``'no'``.
-%     cfg.outputName (str): Unique label for output file and
-%         ``subjectdata.PATHS`` entry. Required when saving data.
+%     cfg.saveData (str, optional): Whether to save output to disk
+%         (``'yes'`` or ``'no'``). Subject.mat is saved regardless of
+%         what this is set to. Requires ``cfg.currSubject``.
+%         Defaults to ``'no'``.
+%     cfg.outputName (str): Unique label for output file, its
+%         ``subjectdata.PATHS`` entry, and this run's config in
+%         ``subjectdata.cfgs``. Required when saving data.
 %     cfg.method (str, optional): Spectral estimation method passed to
 %         ``ft_freqanalysis``. Defaults to ``'mtmfft'``.
 %     cfg.taper (str, optional): Tapering window. Defaults to ``'hanning'``.
@@ -21,8 +24,6 @@ function freq = bv_calculateFrequency(cfg, data)
 %         (``'yes'`` or ``'no'``). Defaults to ``'yes'``.
 %     cfg.pathsFcn (str, optional): Paths function filename. Defaults to
 %         ``'setPaths'``.
-%     cfg.optionsFcn (str, optional): Options function filename. Defaults to
-%         ``'setOptionsPower'``.
 %     cfg.overwrite (str, optional): Whether to overwrite existing output
 %         (``'yes'`` or ``'no'``). Defaults to ``'no'``.
 %     cfg.quiet (str, optional): Suppress command window output
@@ -57,17 +58,24 @@ foi         = ft_getopt(cfg, 'foi', 1:35);
 channel     = ft_getopt(cfg, 'channel', {'EEG'});
 keeptrials  = ft_getopt(cfg, 'keeptrials', 'yes');
 pathsFcn    = ft_getopt(cfg, 'pathsFcn', 'setPaths');
-optionsFcn  = ft_getopt(cfg, 'optionsFcn', 'setOptionsPower');
 overwrite   = ft_getopt(cfg, 'overwrite', 'no');
 quiet       = ft_getopt(cfg, 'quiet', 'no');
 
 quiet = strcmpi(quiet, 'yes');
 
+if strcmpi(saveData, 'yes') && isempty(outputName)
+    error('bv_calculateFrequency: cfg.outputName is required when cfg.saveData is ''yes''')
+end
+if strcmpi(saveData, 'yes') && nargin >= 2 && ~isfield(cfg, 'currSubject')
+    error(['bv_calculateFrequency: cfg.saveData is ''yes'' but data was passed in directly ' ...
+        'and cfg.currSubject was not given - there is no subjectdata to save the output against'])
+end
+
 %% load data (if necessary)
+saveSubjectData = 'no';
 if nargin < 2
     if ~quiet; disp(currSubject); end
     eval(pathsFcn)
-    eval(optionsFcn)
 
     subjectFolderPath = fullfile(PATHS.SUBJECTS, currSubject);
 
@@ -93,7 +101,10 @@ if nargin < 2
         end
     end
 
-    subjectdata.cfgs.(outputName) = cfg;
+    if ~isempty(outputName)
+        subjectdata.cfgs.(outputName) = cfg;
+    end
+    saveSubjectData = 'yes';
 
 elseif isfield(cfg, 'currSubject')
     eval(pathsFcn)
@@ -110,6 +121,11 @@ elseif isfield(cfg, 'currSubject')
             error('%s: Subject.mat not found', currSubject)
         end
     end
+
+    if ~isempty(outputName)
+        subjectdata.cfgs.(outputName) = cfg;
+    end
+    saveSubjectData = 'yes';
 end
 
 %% run ft_freqanalysis
@@ -141,4 +157,6 @@ if strcmpi(saveData, 'yes')
         save(subjectdata.PATHS.(fieldname), 'freq')
         save(fullfile(subjectdata.PATHS.SUBJECTDIR, 'Subject.mat'), 'subjectdata')
     end
+elseif strcmpi(saveSubjectData, 'yes')
+    save(fullfile(subjectdata.PATHS.SUBJECTDIR, 'Subject.mat'), 'subjectdata')
 end

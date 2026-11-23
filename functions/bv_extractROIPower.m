@@ -24,10 +24,13 @@ function power = bv_extractROIPower(cfg, freq)
 %         provided.
 %     cfg.inputName (str): Field name in ``subjectdata.PATHS`` used to load
 %         the frequency data. Required when no freq is provided.
-%     cfg.saveData (str): Whether to save output to disk (``'yes'`` or
-%         ``'no'``). Defaults to ``'no'``.
-%     cfg.outputName (str): Unique label for output file and
-%         ``subjectdata.PATHS`` entry. Required when saving data.
+%     cfg.saveData (str, optional): Whether to save output to disk
+%         (``'yes'`` or ``'no'``). Subject.mat is saved regardless of
+%         what this is set to. Requires ``cfg.currSubject``.
+%         Defaults to ``'no'``.
+%     cfg.outputName (str): Unique label for output file, its
+%         ``subjectdata.PATHS`` entry, and this run's config in
+%         ``subjectdata.cfgs``. Required when saving data.
 %     cfg.conditions (numeric, optional): Condition codes to process
 %         separately. Defaults to ``[]`` (no per-condition breakdown; only
 %         the epoch-level and Global rows are produced).
@@ -54,8 +57,6 @@ function power = bv_extractROIPower(cfg, freq)
 %         Defaults to ``'raw'``.
 %     cfg.pathsFcn (str, optional): Paths function filename. Defaults to
 %         ``'setPaths'``.
-%     cfg.optionsFcn (str, optional): Options function filename. Defaults to
-%         ``'setOptionsPower'``.
 %     cfg.overwrite (str, optional): Whether to overwrite existing output
 %         (``'yes'`` or ``'no'``). Defaults to ``'no'``.
 %     cfg.quiet (str, optional): Suppress command window output
@@ -126,12 +127,14 @@ ROI             = ft_getopt(cfg, 'ROI', defaultROI);
 freqBands       = ft_getopt(cfg, 'freqBands', defaultBands);
 calcMethod      = ft_getopt(cfg, 'calcMethod', 'raw');
 pathsFcn        = ft_getopt(cfg, 'pathsFcn', 'setPaths');
-optionsFcn      = ft_getopt(cfg, 'optionsFcn', 'setOptionsPower');
 overwrite       = ft_getopt(cfg, 'overwrite', 'no');
 quiet           = ft_getopt(cfg, 'quiet', 'no');
 
 quiet = strcmpi(quiet, 'yes');
 
+if strcmpi(saveData, 'yes') && isempty(outputName)
+    error('bv_extractROIPower: cfg.outputName is required when cfg.saveData is ''yes''')
+end
 if strcmpi(saveData, 'yes') && nargin >= 2 && ~isfield(cfg, 'currSubject')
     error(['cfg.saveData is ''yes'' but freq was passed in directly and ' ...
         'cfg.currSubject was not given - there is no subjectdata to save ' ...
@@ -140,10 +143,10 @@ if strcmpi(saveData, 'yes') && nargin >= 2 && ~isfield(cfg, 'currSubject')
 end
 
 %% load data (if necessary)
+saveSubjectData = 'no';
 if nargin < 2
     if ~quiet; disp(currSubject); end
     eval(pathsFcn)
-    eval(optionsFcn)
 
     subjectFolderPath = fullfile(PATHS.SUBJECTS, currSubject);
 
@@ -169,7 +172,10 @@ if nargin < 2
         end
     end
 
-    subjectdata.cfgs.(outputName) = cfg;
+    if ~isempty(outputName)
+        subjectdata.cfgs.(outputName) = cfg;
+    end
+    saveSubjectData = 'yes';
 
 elseif isfield(cfg, 'currSubject')
     eval(pathsFcn)
@@ -186,6 +192,11 @@ elseif isfield(cfg, 'currSubject')
             error('%s: Subject.mat not found', currSubject)
         end
     end
+
+    if ~isempty(outputName)
+        subjectdata.cfgs.(outputName) = cfg;
+    end
+    saveSubjectData = 'yes';
 end
 
 %% resolve subject and wave labels for table output
@@ -427,6 +438,8 @@ if strcmpi(saveData, 'yes')
         save(subjectdata.PATHS.(fieldname), 'power')
         save(fullfile(subjectdata.PATHS.SUBJECTDIR, 'Subject.mat'), 'subjectdata')
     end
+elseif strcmpi(saveSubjectData, 'yes')
+    save(fullfile(subjectdata.PATHS.SUBJECTDIR, 'Subject.mat'), 'subjectdata')
 end
 
 end % function bv_extractROIPower
