@@ -9,12 +9,13 @@ function bv_createNewAnalysis(str, overwrite)
 % ``preprocessingData.m``, ``setOptionsPower.m``, ``powerEstimates.m``,
 % ``setOptionsNetmet.m``, and ``networkMetrics.m``.
 %
-% ``preprocessingData.m`` and ``powerEstimates.m`` come in four variants
-% (``preprocessingData_standard*`` and ``powerEstimates_standard*``, with
-% the suffixes ``_parfor``, ``_withoutSave`` or ``_withoutSave_parfor``).
+% ``preprocessingData.m``, ``powerEstimates.m`` and ``networkMetrics.m``
+% come in four variants (``preprocessingData_standard*``,
+% ``powerEstimates_standard*`` and ``networkMetrics_standard*``, with the
+% suffixes ``_parfor``, ``_withoutSave`` or ``_withoutSave_parfor``).
 % The function always prompts (via ``questdlg``) for whether to use
 % parallel processing and whether to save intermediate steps, and the
-% answers apply to both scripts. A script that does not exist yet is
+% answers apply to all three scripts. A script that does not exist yet is
 % created. A script that already exists is kept if it is the variant picked,
 % and replaced by the picked variant if it is another one (including any
 % edits made to it, even if ``overwrite`` is ``false``). The variant of an
@@ -98,8 +99,8 @@ end
 
 setOptionsExist = createScriptFromTemplate(PATHS.CURRANALYSIS, 'setOptions.m', 'setOptions_preproc', overwrite);
 
-% preprocessingData.m and powerEstimates.m come in the same four variants
-% (see askVariantSuffix), chosen once for both
+% preprocessingData.m, powerEstimates.m and networkMetrics.m come in the same
+% four variants (see askVariantSuffix), chosen once for all three
 [variantSuffix, cancelled] = askVariantSuffix();
 
 preprocessExist = placeVariantScript(PATHS.CURRANALYSIS, 'preprocessingData.m', ...
@@ -109,7 +110,8 @@ setPowerOptionsExist  = createScriptFromTemplate(PATHS.CURRANALYSIS, 'setOptions
 powerEstimatesExist   = placeVariantScript(PATHS.CURRANALYSIS, 'powerEstimates.m', ...
     'powerEstimates_standard', variantSuffix, cancelled, overwrite);
 setNetmetOptionsExist = createScriptFromTemplate(PATHS.CURRANALYSIS, 'setOptionsNetmet.m', 'setOptions_netmet', overwrite);
-networkMetricsExist   = createScriptFromTemplate(PATHS.CURRANALYSIS, 'networkMetrics.m', 'networkMetrics_standard', overwrite);
+networkMetricsExist   = placeVariantScript(PATHS.CURRANALYSIS, 'networkMetrics.m', ...
+    'networkMetrics_standard', variantSuffix, cancelled, overwrite);
 
 fprintf('create log: \n')
 if ~overwrite && exist([PATHS.CURRANALYSIS filesep 'log.txt'], 'file')
@@ -173,7 +175,7 @@ ok = copyTemplate(analysisFolder, targetName, [templateBase suffix]);
 end
 
 function suffix = detectVariantSuffix(scriptPath)
-% Recognises the variant of a preprocessingData/powerEstimates script from
+% Recognises the variant of a preprocessingData/powerEstimates/networkMetrics script from
 % its contents: a parfor loop makes it parallel, the title of the
 % withoutSave templates makes it a script without intermediate steps.
 txt = fileread(scriptPath);

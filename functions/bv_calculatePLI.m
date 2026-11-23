@@ -2,14 +2,18 @@ function [ connectivity ] = bv_calculatePLI(cfg, data)
 % Calculates PLI values for specified frequency ranges.
 %
 % Args:
-%     cfg.currSubject (str): Subject folder name. Required when no data
-%         is provided.
+%     cfg.currSubject (str): Subject folder name. Always required, since
+%         the continuous data is read in again from the subject's raw file
+%         (see ``cfg.preprocOptions``).
 %     cfg.inputName (str): Field name in ``subjectdata.PATHS`` used to load
-%         input data. Required when no data is provided.
-%     cfg.saveData (str): Whether to save output to disk (``'yes'`` or
-%         ``'no'``). Required when no data is provided.
-%     cfg.outputName (str): Unique label for output file and
-%         ``subjectdata.PATHS`` entry. Required when saving data.
+%         the clean-trial definitions (``data``). Required when no data is
+%         provided.
+%     cfg.saveData (str, optional): Whether to save output to disk
+%         (``'yes'`` or ``'no'``). Subject.mat is saved whenever this
+%         function runs, whatever this is set to. Defaults to ``'no'``.
+%     cfg.outputName (str): Unique label for output file, its
+%         ``subjectdata.PATHS`` entry, and this run's config in
+%         ``subjectdata.cfgs``. Required when saving data.
 %     cfg.ntrials (int or str, optional): Number of trials to use.
 %         Defaults to ``'all'``.
 %     cfg.condition (str, optional): Condition codes to include.
@@ -32,16 +36,15 @@ function [ connectivity ] = bv_calculatePLI(cfg, data)
 %         (``'yes'`` or ``'no'``). Defaults to ``'no'``.
 %     cfg.pathsFcn (str, optional): Paths function filename. Must resolve
 %         to a valid file on the MATLAB path. Defaults to ``'setPaths'``.
-%     cfg.optionsFcn (str, optional): Options function filename. Must
-%         resolve to a valid file on the MATLAB path.
-%         Defaults to ``'setOptions'``.
 %     cfg.overwrite (str, optional): Whether to overwrite existing output
 %         (``'yes'`` or ``'no'``). Defaults to ``'no'``.
 %     cfg.quiet (str, optional): Suppress command window output
 %         (``'yes'`` or ``'no'``). Defaults to ``'no'``.
 %     data (struct, optional): FieldTrip data structure containing
-%         multiple trials. If omitted, data is loaded from disk using
-%         ``cfg.currSubject`` and ``cfg.inputName``.
+%         multiple trials. Only its ``sampleinfo`` and ``trialinfo`` are
+%         used to cut the clean trials out of the re-read data. If omitted,
+%         it is loaded from disk using ``cfg.currSubject`` and
+%         ``cfg.inputName``.
 %
 % Returns:
 %     connectivity (struct): PLI connectivity structure with fields
@@ -72,7 +75,6 @@ inputName       = ft_getopt(cfg, 'inputName');
 saveData        = ft_getopt(cfg, 'saveData', 'no');
 outputName      = ft_getopt(cfg, 'outputName');
 pathsFcn        = ft_getopt(cfg, 'pathsFcn', 'setPaths');
-optionsFcn      = ft_getopt(cfg, 'optionsFcn', 'setOptions');
 triallength     = ft_getopt(cfg, 'triallength');
 keeptrials      = ft_getopt(cfg, 'keeptrials', 'no');
 quiet           = ft_getopt(cfg, 'quiet');
@@ -99,11 +101,17 @@ else
     quiet = false;
 end
 
+if isempty(currSubject)
+    error('bv_calculatePLI: cfg.currSubject is required (the continuous data is read in again from the subject''s raw file)')
+end
+if strcmpi(saveData, 'yes') && isempty(outputName)
+    error('bv_calculatePLI: cfg.outputName is required when cfg.saveData is ''yes''')
+end
+
 %% load in data (if necessary)
 if nargin < 2
     if ~quiet; disp(currSubject); end
     eval(pathsFcn)
-    eval(optionsFcn)
 
     subjectFolderPath = [PATHS.SUBJECTS filesep currSubject];
 
@@ -129,8 +137,10 @@ if nargin < 2
         end
     end
 
-    subjectdata.cfgs.(outputName) = cfg;
-elseif isfield(cfg, 'currSubject')
+    if ~isempty(outputName)
+        subjectdata.cfgs.(outputName) = cfg;
+    end
+else
 
     eval(pathsFcn)
 
@@ -139,15 +149,18 @@ elseif isfield(cfg, 'currSubject')
     if ~quiet
         [subjectdata, check] = bv_check4data(subjectFolderPath);
         if ~check
-            error('%s: input data not found', currSubject)
+            error('%s: Subject.mat not found', currSubject)
         end
     else
         evalc('[subjectdata, check] = bv_check4data(subjectFolderPath);');
         if ~check
-            error('%s: input data not found', currSubject)
+            error('%s: Subject.mat not found', currSubject)
         end
     end
 
+    if ~isempty(outputName)
+        subjectdata.cfgs.(outputName) = cfg;
+    end
 end
 
 if ~quiet; fprintf('\t loading in original data ...'); end
@@ -247,6 +260,8 @@ if strcmpi(saveData, 'yes')
         save([subjectdata.PATHS.SUBJECTDIR filesep 'Subject.mat'], 'subjectdata')
     end
 
+else
+    save([subjectdata.PATHS.SUBJECTDIR filesep 'Subject.mat'], 'subjectdata')
 end
 
 %%%%%% extra functions %%%%%%

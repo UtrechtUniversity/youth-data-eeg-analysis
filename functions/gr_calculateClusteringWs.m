@@ -207,6 +207,10 @@ elseif isfield(cfg, 'currSubject')
             error('%s: Subject.mat not found', currSubject)
         end
     end
+
+    if ~isempty(outputName)
+        subjectdata.cfgs.(outputName) = cfg;
+    end
 end
 
 %% resolve subject and wave labels for table output

@@ -1,6 +1,25 @@
-%% Network metrics pipeline
-% Step-by-step script for connectivity and graph-metric calculation.
-% Run after preprocessingData has completed for all subjects.
+%% NETWORK METRICS PIPELINE
+% Overview script of the steps for connectivity and graph-metric calculations.
+% Run after preprocessingData has completed for all subjects. Every step runs
+% over all subjects before the next step starts and saves its output to the
+% subject folder, so that a step can be redone without redoing the earlier
+% ones. A subject for which a step fails is reported with a warning and is
+% removed (moved to the removed directory), as in during preprocessing.
+% After every step the subject's Subject.mat is merged into the shared
+% SubjectSummary.mat, and the metric steps are followed by their
+% cross-subject summary.
+%
+% Variants of this script (bv_createNewAnalysis picks the one that matches
+% your preprocessingData script):
+%   networkMetrics_standard                      this script
+%   networkMetrics_standard_parfor               same, in parallel
+%   networkMetrics_standard_withoutSave          one pass per subject, PLI handed
+%                                                over in memory
+%   networkMetrics_standard_withoutSave_parfor   same, in parallel
+%
+
+%% settings
+quiet = 'no';
 
 %% ENSURE NETMET FOLDER EXISTS
 % Subject folders created before the network-metrics feature have no netmet/
@@ -29,14 +48,21 @@ end
 clear OPTIONS; setOptionsNetmet
 
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
-for iSubjects = startSubject:endSubject
+subjectFolderNames = subjectFolderNames(startSubject:endSubject);
 
+for iSubjects = 1:numel(subjectFolderNames)
     currSubject     = subjectFolderNames{iSubjects};
+
     cfg             = OPTIONS.PLICONNECTIVITY;
     cfg.currSubject = currSubject;
-    cfg.quiet       = 'no';
+    cfg.quiet       = quiet;
 
-    connectivity = bv_calculatePLI(cfg);
+    try
+        connectivity = bv_calculatePLI(cfg);
+    catch ME
+        warning('%s: %s', currSubject, ME.message);
+        removingSubjects([], currSubject, ME.message);
+    end
     bv_syncSubjectSummary(currSubject);
 end
 
@@ -44,14 +70,21 @@ end
 clear OPTIONS; setOptionsNetmet
 
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
-for iSubjects = startSubject:endSubject
+subjectFolderNames = subjectFolderNames(startSubject:endSubject);
 
+for iSubjects = 1:numel(subjectFolderNames)
     currSubject     = subjectFolderNames{iSubjects};
+
     cfg             = OPTIONS.STRENGTH;
     cfg.currSubject = currSubject;
-    cfg.quiet       = 'no';
+    cfg.quiet       = quiet;
 
-    strength = bv_calculateStrength(cfg);
+    try
+        strength = bv_calculateStrength(cfg);
+    catch ME
+        warning('%s: %s', currSubject, ME.message);
+        removingSubjects([], currSubject, ME.message);
+    end
     bv_syncSubjectSummary(currSubject);
 end
 
@@ -64,14 +97,21 @@ bv_collectNetmetSummary(OPTIONS.STRENGTHSUMMARY);
 clear OPTIONS; setOptionsNetmet
 
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
-for iSubjects = startSubject:endSubject
+subjectFolderNames = subjectFolderNames(startSubject:endSubject);
 
+for iSubjects = 1:numel(subjectFolderNames)
     currSubject     = subjectFolderNames{iSubjects};
+
     cfg             = OPTIONS.SWP;
     cfg.currSubject = currSubject;
-    cfg.quiet       = 'no';
+    cfg.quiet       = quiet;
 
-    swp = bv_calculateSWP(cfg);
+    try
+        swp = bv_calculateSWP(cfg);
+    catch ME
+        warning('%s: %s', currSubject, ME.message);
+        removingSubjects([], currSubject, ME.message);
+    end
     bv_syncSubjectSummary(currSubject);
 end
 
@@ -84,14 +124,21 @@ bv_collectNetmetSummary(OPTIONS.SWPSUMMARY);
 clear OPTIONS; setOptionsNetmet
 
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
-for iSubjects = startSubject:endSubject
+subjectFolderNames = subjectFolderNames(startSubject:endSubject);
 
+for iSubjects = 1:numel(subjectFolderNames)
     currSubject     = subjectFolderNames{iSubjects};
+
     cfg             = OPTIONS.QMOD;
     cfg.currSubject = currSubject;
-    cfg.quiet       = 'no';
+    cfg.quiet       = quiet;
 
-    qmod = gr_calculateQModularity(cfg);
+    try
+        qmod = gr_calculateQModularity(cfg);
+    catch ME
+        warning('%s: %s', currSubject, ME.message);
+        removingSubjects([], currSubject, ME.message);
+    end
     bv_syncSubjectSummary(currSubject);
 end
 
@@ -104,14 +151,21 @@ bv_collectNetmetSummary(OPTIONS.QMODSUMMARY);
 clear OPTIONS; setOptionsNetmet
 
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
-for iSubjects = startSubject:endSubject
+subjectFolderNames = subjectFolderNames(startSubject:endSubject);
 
+for iSubjects = 1:numel(subjectFolderNames)
     currSubject     = subjectFolderNames{iSubjects};
+
     cfg             = OPTIONS.CLUSTERING;
     cfg.currSubject = currSubject;
-    cfg.quiet       = 'no';
+    cfg.quiet       = quiet;
 
-    clus = gr_calculateClusteringWs(cfg);
+    try
+        clus = gr_calculateClusteringWs(cfg);
+    catch ME
+        warning('%s: %s', currSubject, ME.message);
+        removingSubjects([], currSubject, ME.message);
+    end
     bv_syncSubjectSummary(currSubject);
 end
 
@@ -124,14 +178,21 @@ bv_collectNetmetSummary(OPTIONS.CLUSTERINGSUMMARY);
 clear OPTIONS; setOptionsNetmet
 
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
-for iSubjects = startSubject:endSubject
+subjectFolderNames = subjectFolderNames(startSubject:endSubject);
 
+for iSubjects = 1:numel(subjectFolderNames)
     currSubject     = subjectFolderNames{iSubjects};
+
     cfg             = OPTIONS.PATHLENGTH;
     cfg.currSubject = currSubject;
-    cfg.quiet       = 'no';
+    cfg.quiet       = quiet;
 
-    pathlen = gr_calculatePathlengthWs(cfg);
+    try
+        pathlen = gr_calculatePathlengthWs(cfg);
+    catch ME
+        warning('%s: %s', currSubject, ME.message);
+        removingSubjects([], currSubject, ME.message);
+    end
     bv_syncSubjectSummary(currSubject);
 end
 
@@ -144,14 +205,21 @@ bv_collectNetmetSummary(OPTIONS.PATHLENGTHSUMMARY);
 clear OPTIONS; setOptionsNetmet
 
 [startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
-for iSubjects = startSubject:endSubject
+subjectFolderNames = subjectFolderNames(startSubject:endSubject);
 
+for iSubjects = 1:numel(subjectFolderNames)
     currSubject     = subjectFolderNames{iSubjects};
+
     cfg             = OPTIONS.BC;
     cfg.currSubject = currSubject;
-    cfg.quiet       = 'no';
+    cfg.quiet       = quiet;
 
-    bc = gr_calculateBetweennessCentrality(cfg);
+    try
+        bc = gr_calculateBetweennessCentrality(cfg);
+    catch ME
+        warning('%s: %s', currSubject, ME.message);
+        removingSubjects([], currSubject, ME.message);
+    end
     bv_syncSubjectSummary(currSubject);
 end
 

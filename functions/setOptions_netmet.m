@@ -35,6 +35,7 @@ OPTIONS.PLICONNECTIVITY.freqBands      = freqBands;
 OPTIONS.PLICONNECTIVITY.triallength    = OPTIONS.triallength;
 OPTIONS.PLICONNECTIVITY.outputName     = ['PLI' num2str(OPTIONS.triallength)];
 OPTIONS.PLICONNECTIVITY.saveData       = OPTIONS.saveData;
+OPTIONS.PLICONNECTIVITY.overwrite      = 'no';       % 'no': keep an existing PLI file
 OPTIONS.PLICONNECTIVITY.optionsFcn     = OPTIONS.pathsScript;
 OPTIONS.PLICONNECTIVITY.keeptrials     = 'yes';         % keep per-epoch matrices
 OPTIONS.PLICONNECTIVITY.preprocOptions = OPTIONS.REREF; % settings used to re-derive the continuous filtered signal
