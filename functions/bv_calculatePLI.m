@@ -14,24 +14,50 @@ function [ connectivity ] = bv_calculatePLI(cfg, data)
 %     cfg.outputName (str): Unique label for output file, its
 %         ``subjectdata.PATHS`` entry, and this run's config in
 %         ``subjectdata.cfgs``. Required when saving data.
-%     cfg.ntrials (int or str, optional): Number of trials to use.
-%         Defaults to ``'all'``.
-%     cfg.condition (str, optional): Condition codes to include.
-%         Defaults to ``'all'``.
+%     cfg.ntrials (int or str, optional): Number of epochs to use. If more
+%         clean epochs are available, that many are drawn at random; if
+%         fewer, the subject is skipped (empty output). Defaults to
+%         ``'all'``.
+%     cfg.condition (str or numeric, optional): Condition (trigger) codes
+%         to include, or ``'all'``. Defaults to ``'all'``.
 %     cfg.freqBands (struct, optional): Fields are band labels, values are
 %         ``[low high]`` Hz ranges used to band-pass filter the continuous
 %         signal before PLI is computed for that band (matching the
 %         cfg.freqBands convention used by bv_extractROIPower). Defaults to
-%         the same bands used by the power-estimates steps: delta, theta,
-%         alpha, beta, gamma, infantTheta, infantAlpha, total. Band order
-%         (and therefore column order downstream) follows
-%         fieldnames(cfg.freqBands), i.e. the order the fields were
-%         assigned in.
+%         the same bands as the power step: delta [1 3], theta [4 7],
+%         alpha [8 12], beta [13 25], gamma [26 35], infantTheta [3 6],
+%         infantAlpha [6 9], total [1 35]. Band order (and therefore column
+%         order downstream) follows fieldnames(cfg.freqBands), i.e. the order
+%         the fields were assigned in.
 %     cfg.preprocOptions (struct, optional): FieldTrip ``cfg`` struct
 %         passed to ``bv_preprocResample`` before PLI calculation.
 %         Defaults to ``[]``.
-%     cfg.triallength (int, optional): Trial length in seconds for cutting
-%         appended data before PLI calculation. Not applied when omitted.
+%     cfg.triallength (int, optional): Epoch length in seconds. The clean
+%         stretches of ``data`` are cut into epochs of this length with
+%         BV_REDEFINETRIALLENGTH. Stretches shorter than this are
+%         dropped; if none is long enough the function errors. When
+%         omitted, the stretches of ``data`` themselves are used as epochs.
+%     cfg.overlap (num, optional): Overlap between consecutive epochs as a
+%         fraction (0-1, exclusive of 1). ``2/3`` of 3 s epochs gives a
+%         new epoch every 1 s. Only used when ``cfg.triallength`` is set.
+%         Defaults to ``0`` (no overlap).
+%     cfg.cleanEpochs (str, optional): Whether to remove the noisy
+%         epochs (``'yes'`` or ``'no'``). An epoch is noisy if any
+%         artefact metric named in ``cfg.lims`` is above its limit; the
+%         metrics are measured on every epoch of the broadband data and
+%         an noisy epoch is removed for all frequency bands, like in
+%         BV_CLEANDATA. With ``'no'`` every epoch is kept.
+%         Defaults to ``'yes'``.
+%     cfg.lims (struct): Thresholds above which an epoch is discarded: one
+%         field per artefact metric (``abs``, ``flatline``, ``kurtosis``,
+%         ``variance``, see BV_CLEANDATA). Required when
+%         ``cfg.cleanEpochs`` is ``'yes'``; not used otherwise.
+%     cfg.minEpochs (int, optional): Minimum number of epochs a subject
+%         needs, counted after the condition selection and artefact
+%         rejection. A subject with fewer makes the function error with
+%         the numbers in the message, so the pipeline scripts remove it
+%         (see REMOVINGSUBJECTS). ``[]`` means no minimum (a subject is
+%         then only rejected when no epoch is left). Defaults to ``[]``.
 %     cfg.keeptrials (str, optional): Whether to retain per-trial PLI values
 %         (``'yes'`` or ``'no'``). Defaults to ``'no'``.
 %     cfg.pathsFcn (str, optional): Paths function filename. Must resolve
@@ -41,10 +67,15 @@ function [ connectivity ] = bv_calculatePLI(cfg, data)
 %     cfg.quiet (str, optional): Suppress command window output
 %         (``'yes'`` or ``'no'``). Defaults to ``'no'``.
 %     data (struct, optional): FieldTrip data structure containing
-%         multiple trials. Only its ``sampleinfo`` and ``trialinfo`` are
-%         used to cut the clean trials out of the re-read data. If omitted,
-%         it is loaded from disk using ``cfg.currSubject`` and
-%         ``cfg.inputName``.
+%         multiple trials. The epochs are cut from it (its signal is used
+%         for the artefact check) and their ``sampleinfo`` and
+%         ``trialinfo`` are used to cut the same epochs out of the re-read,
+%         band-filtered data. If omitted, it is loaded from disk using
+%         ``cfg.currSubject`` and ``cfg.inputName``.
+%
+% Besides the connectivity file, the numbers of epochs are stored in
+% subjectdata: ``nEpochsPLI`` (epochs before the artefact check) and
+% ``nCleanEpochsPLI`` (epochs left after it).
 %
 % Returns:
 %     connectivity (struct): PLI connectivity structure with fields
@@ -66,6 +97,16 @@ function [ connectivity ] = bv_calculatePLI(cfg, data)
 %     cfg.freqBands.theta = [4 7];
 %     connectivity = bv_calculatePLI(cfg);
 %     ```
+%
+%     Use 3 s epochs with a 1 s sliding window, and discard epochs
+%     with artefacts:
+%
+%     ```matlab
+%     cfg.triallength = 3;
+%     cfg.overlap     = 2/3;
+%     cfg.lims        = struct('abs', 250, 'kurtosis', 10);
+%     connectivity = bv_calculatePLI(cfg);
+%     ```
 
 %% get options
 ntrials         = ft_getopt(cfg, 'ntrials','all');
@@ -76,12 +117,18 @@ saveData        = ft_getopt(cfg, 'saveData', 'no');
 outputName      = ft_getopt(cfg, 'outputName');
 pathsFcn        = ft_getopt(cfg, 'pathsFcn', 'setPaths');
 triallength     = ft_getopt(cfg, 'triallength');
+overlap         = ft_getopt(cfg, 'overlap', 0);
+cleanEpochs     = ft_getopt(cfg, 'cleanEpochs', 'yes');
+lims            = ft_getopt(cfg, 'lims');
+minEpochs       = ft_getopt(cfg, 'minEpochs');
 keeptrials      = ft_getopt(cfg, 'keeptrials', 'no');
 quiet           = ft_getopt(cfg, 'quiet');
 preprocOptions  = ft_getopt(cfg, 'preprocOptions', []);
 overwrite       = ft_getopt(cfg, 'overwrite', 'no');
 
-%% default frequency bands (matching the power-estimates steps' bands)
+%% frequency bands
+% Default bands, the same as in setOptions_netmet.m and as the defaults of
+% bv_extractROIPower. We suggest to keep them in sync.
 defaultFreqBands.delta       = [1 3];   % Hz
 defaultFreqBands.theta       = [4 7];   % Hz
 defaultFreqBands.alpha       = [8 12];  % Hz
@@ -106,6 +153,9 @@ if isempty(currSubject)
 end
 if strcmpi(saveData, 'yes') && isempty(outputName)
     error('bv_calculatePLI: cfg.outputName is required when cfg.saveData is ''yes''')
+end
+if strcmpi(cleanEpochs, 'yes') && isempty(lims)
+    error('bv_calculatePLI: cfg.lims is required when cfg.cleanEpochs is ''yes''')
 end
 
 %% load in data (if necessary)
@@ -171,6 +221,67 @@ cfg.trialfun = '';
 evalc('origdata = bv_preprocResample(cfg);');
 if ~quiet; fprintf('done \n'); end
 
+%% define the epochs and discard the artefact-contaminated ones
+% Done once on the broadband data (the same signal the power step checks),
+% so every frequency band uses the same epochs.
+if quiet; quietStr = 'yes'; else; quietStr = 'no'; end
+
+if ~isempty(triallength)
+    cfgEpoch             = [];
+    cfgEpoch.triallength = triallength;
+    cfgEpoch.overlap     = overlap;
+    cfgEpoch.quiet       = quietStr;
+    epochData = bv_redefineTriallength(cfgEpoch, data);
+else
+    epochData = data;
+end
+
+keepEpoch = true(1, numel(epochData.trial));
+if ~strcmpi(condition, 'all')
+    keepEpoch = ismember(epochData.trialinfo(:,1), condition)';
+end
+if ~any(keepEpoch)
+    error('bv_calculatePLI: no epochs found for the requested condition')
+end
+nEpochs = sum(keepEpoch);
+
+if strcmpi(cleanEpochs, 'yes')
+    cfgArt          = [];
+    cfgArt.analyses = fieldnames(lims);
+    cfgArt.quiet    = quietStr;
+    artefactdef     = bv_createArtefactStruct(cfgArt, epochData);
+    [~, badEpoch]   = bv_findCleanTrials(artefactdef, lims);
+    keepEpoch       = keepEpoch & ~badEpoch;
+end
+nCleanEpochs = sum(keepEpoch);
+
+subjectdata.nEpochsPLI      = nEpochs;
+subjectdata.nCleanEpochsPLI = nCleanEpochs;
+if ~quiet; fprintf('\t %d of %d epochs are free of artefacts \n', nCleanEpochs, nEpochs); end
+
+if nCleanEpochs == 0
+    error('no clean epochs found')
+end
+if ~isempty(minEpochs) && nCleanEpochs < minEpochs
+    error('too few clean epochs (%d, minimum %d)', nCleanEpochs, minEpochs)
+end
+
+epochSampleinfo = epochData.sampleinfo(keepEpoch, :);
+epochTrialinfo  = epochData.trialinfo(keepEpoch, :);
+
+if ~strcmpi(ntrials, 'all')
+    if nCleanEpochs < ntrials
+        if ~quiet; fprintf('\t not enough epochs found, skipping ... \n'); end
+        connectivity = [];
+        return
+    end
+    selected        = sort(randperm(nCleanEpochs, ntrials));
+    epochSampleinfo = epochSampleinfo(selected, :);
+    epochTrialinfo  = epochTrialinfo(selected, :);
+    if ~quiet; fprintf('\t selecting %d epochs ... \n', ntrials); end
+end
+clear epochData artefactdef
+
 %% calculate PLIs
 for iFreq = 1:length(freqLabel)
     currFreq = freqLabel{iFreq};
@@ -185,37 +296,10 @@ for iFreq = 1:length(freqLabel)
     cfg.hpinstabilityfix = 'reduce';
     evalc('origdata_filt = ft_preprocessing(cfg, origdata);');
 
-    if ~quiet; fprintf('\t cut out clean data according to input file ... \n'); end
-    trl = [data.sampleinfo, zeros(size(data.sampleinfo,1),1), data.trialinfo];
+    if ~quiet; fprintf('\t cutting out the epochs ... \n'); end
     cfg = [];
-    cfg.trl = trl;
-    evalc('origdata_filt = ft_redefinetrial(cfg, origdata_filt);');
-
-    % cut, if needed data into trials
-    if ~isempty(triallength)
-        cfg = [];
-        cfg.saveData = 'no';
-        cfg.triallength = triallength;
-        cfg.ntrials = ntrials;
-        if ~quiet
-            [dataCut, finished] = bv_cutAppendedIntoTrials(cfg, origdata_filt);
-        else
-            evalc('[dataCut, finished] = bv_cutAppendedIntoTrials(cfg, origdata_filt);');
-        end
-
-        if ~finished
-            connectivity = [];
-            return;
-        end
-    else
-        dataCut = origdata_filt;
-    end
-
-    if not(strcmpi(condition, 'all'))
-        cfg = [];
-        cfg.trials = find(ismember(dataCut.trialinfo, condition));
-        evalc('dataCut = ft_selectdata(cfg, dataCut);');
-    end
+    cfg.trl = [epochSampleinfo, zeros(size(epochSampleinfo,1),1), epochTrialinfo];
+    evalc('dataCut = ft_redefinetrial(cfg, origdata_filt);');
 
     if ~quiet; fprintf('\t calculating PLI ... '); end
     PLIs = PLI(dataCut.trial,1);

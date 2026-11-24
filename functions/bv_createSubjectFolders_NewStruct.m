@@ -218,11 +218,12 @@ for subjIndex = 1:length(files)
     subjectdata.removedDuring    = '';
     subjectdata.removedReason    = '';
 
-    % reserved for the sliding-window epoching step, if/when one is added
-    % to the power-estimate stage; NaN until then, or for any subject
-    % that never reaches that step.
+    % epoch counts of the power and connectivity (PLI) stages; NaN until
+    % the subject reaches that stage.
     subjectdata.nEpochsPower      = NaN;
     subjectdata.nCleanEpochsPower = NaN;
+    subjectdata.nEpochsPLI        = NaN;
+    subjectdata.nCleanEpochsPLI   = NaN;
 
     if ~nameResolved
         save(fullfile(paths2SubjectFolder, 'Subject'), 'subjectdata');

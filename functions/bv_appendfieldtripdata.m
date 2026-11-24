@@ -1,8 +1,8 @@
 function data = bv_appendfieldtripdata(cfg, dataOld)
 % Appends trials in a FieldTrip data structure based on sampleinfo.
 %
-% Output is suitable for use with bv_cutAppendedIntoTrials to segment
-% into trials of a desired length.
+% Output is suitable for use with bv_redefineTriallength to cut it into
+% epochs of a desired length.
 %
 % Args:
 %     cfg.currSubject (str): Subject folder name. Required when no data

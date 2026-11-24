@@ -20,6 +20,7 @@
 %% General options
 OPTIONS.saveData    = 'yes';      % 'string': Save the results of the steps in the subject folders: 'yes' or 'no' (stored in subjectdata)
 OPTIONS.pathsScript = 'setPaths'; % 'string': Name of the paths script (normally leave as is)
+OPTIONS.triallength = 3;          % [ number ]: Length (seconds) of the epochs the connectivity metric (PLI) is calculated on
 
 %% Epoch preprocessed data into sliding windows for power estimation
 % Cuts the clean data into epochs that overlap (sliding windows). The input
@@ -29,7 +30,7 @@ OPTIONS.pathsScript = 'setPaths'; % 'string': Name of the paths script (normally
 % See bv_redefineTriallength
 OPTIONS.EPOCH.inputName    = 'APPEND';            % 'string': Saved result that is cut into epochs (the joined clean data)
 OPTIONS.EPOCH.outputName   = 'EPOCHS';            % 'string': Name the epochs are saved under
-OPTIONS.EPOCH.triallength  = 3;                   % [ number ]: Length of each epoch in seconds
+OPTIONS.EPOCH.triallength  = OPTIONS.triallength; % [ number ]: Length of each epoch in seconds
 OPTIONS.EPOCH.overlap      = 2/3;                 % [ number ]: Overlap between consecutive epochs as a fraction (0-1); 2/3 of 3 s epochs = a new epoch every 1 s
 OPTIONS.EPOCH.saveData     = OPTIONS.saveData;    % 'string': Save the result of this step in the subject's folder: 'yes' or 'no'
 OPTIONS.EPOCH.pathsFcn     = OPTIONS.pathsScript; % 'string': Name of the paths script (normally leave as is)
@@ -51,7 +52,13 @@ OPTIONS.ARTFCTEPOCH.analyses     = {'kurtosis','variance', 'flatline', 'abs'}; %
 % Removes the epochs with artefacts: an epoch that exceeds any of the
 % thresholds below is discarded. These thresholds are intentionally the same
 % as in the clean-data step of setOptions.m (same rejection criteria, now
-% applied to each 3 s epoch). We suggest to keep them in sync.
+% applied to each 3 s epoch). We suggest to keep them in sync. The
+% connectivity step (setOptionsNetmet.m) checks its epochs against the same
+% limits.
+%
+% Two optional settings below: cleanEpochs = 'no' keeps every epoch (the
+% artefact values of the step above are still calculated and saved), and
+% minEpochs removes a subject that has fewer clean epochs than that number.
 epochLims = struct;
 epochLims.abs      = 250;   % [ number ]: largest allowed absolute amplitude (uV)
 epochLims.flatline = 0.1;   % [ number ]: flat-signal measure (1 ./ SD.^2); higher = flatter
@@ -64,10 +71,12 @@ OPTIONS.CLEANEPOCHS.inputName      = 'EPOCHS';            % 'string': Saved epoc
 OPTIONS.CLEANEPOCHS.artefactData   = 'ARTFCTEPOCHS';      % 'string': Saved artefact values to use (from the artefact step above)
 OPTIONS.CLEANEPOCHS.outputName     = 'CLEANEPOCHS';       % 'string': Name the clean epochs are saved under
 OPTIONS.CLEANEPOCHS.saveData       = OPTIONS.saveData;    % 'string': Save the result of this step in the subject's folder: 'yes' or 'no'
+OPTIONS.CLEANEPOCHS.cleanEpochs    = 'yes';               % 'string': Remove the noisy epochs, those with an artefact measure above a limit below: 'yes' or 'no' ('no' keeps every epoch and the limits are not used)
+OPTIONS.CLEANEPOCHS.lims           = epochLims;           % struct: Thresholds above which an epoch is discarded (see above)
+OPTIONS.CLEANEPOCHS.minEpochs      = [];                  % [ number ]: Minimum number of clean epochs a subject needs; a subject with fewer is removed. [] = no minimum (a subject is then only removed when no clean epoch is left)
 OPTIONS.CLEANEPOCHS.stage          = 'power';             % 'string': Pipeline stage of this cleaning, so its epoch counts are stored separately from those of the preprocessing stage (normally leave as is)
 OPTIONS.CLEANEPOCHS.saveCleanData  = 'yes';               % 'string': 'yes' = skip subjects that already have a result (unless overwrite = 'yes')
 OPTIONS.CLEANEPOCHS.overwrite      = 'no';                % 'string': 'yes' = redo and replace an existing result; 'no' = skip subjects that already have it
-OPTIONS.CLEANEPOCHS.lims           = epochLims;           % struct: Thresholds above which an epoch is discarded (see above)
 OPTIONS.CLEANEPOCHS.calculateDataloss = 'no';             % 'string': Calculate the percentage of epochs lost by the cleaning and store it for the subject: 'yes' or 'no'
 OPTIONS.CLEANEPOCHS.dataLossLabel  = 'dataLoss';          % 'string': Name under which that percentage is stored (only if calculateDataloss = 'yes')
 OPTIONS.CLEANEPOCHS.expectedtrials = [];                  % [ number ]: Number of epochs expected per subject (only needed if calculateDataloss = 'yes'); [] = not used

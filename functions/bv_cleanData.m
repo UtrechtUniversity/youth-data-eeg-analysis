@@ -23,7 +23,19 @@ function data = bv_cleanData(cfg, data, artefactdef)
 %     cfg.lims (struct): Rejection thresholds for artefact metrics. Each
 %         field must match a metric in the artefact struct (``kurtosis``,
 %         ``variance``, ``jump``, ``abs``, ``range``, ``flatline``).
-%         Required.
+%         Required when ``cfg.cleanEpochs`` is ``'yes'``; not used
+%         otherwise.
+%     cfg.cleanEpochs (str, optional): Whether to remove the noisy
+%         trials (``'yes'``), i.e. those with an artefact metric above its
+%         limit in ``cfg.lims``, or to keep every trial (``'no'``; the
+%         artefact values are then not needed). The trial counts and the
+%         minimum below still apply. Defaults to ``'yes'``.
+%     cfg.minEpochs (int, optional): Minimum number of clean trials a
+%         subject needs. A subject with fewer is removed (see
+%         REMOVINGSUBJECTS) with the reason 'too few clean epochs', and
+%         empty data is returned. ``[]`` means no minimum (a subject is
+%         then only removed when no clean trial is left). Defaults to
+%         ``[]``.
 %     cfg.stage (str, optional): Pipeline stage this cleaning belongs to,
 %         which decides the subjectdata fields the trial counts and clean
 %         sample indices are stored in (see above): ``'artefact'`` (the
@@ -60,8 +72,8 @@ function data = bv_cleanData(cfg, data, artefactdef)
 % Returns:
 %     data (struct): FieldTrip data with artefact trials removed. Returns
 %         empty (``[]``) if output already exists and ``cfg.overwrite`` is
-%         ``'no'``, or if no clean trials are left (the subject is then
-%         removed, see REMOVINGSUBJECTS).
+%         ``'no'``, or if no clean trials, or fewer than ``cfg.minEpochs``,
+%         are left (the subject is then removed, see REMOVINGSUBJECTS).
 %
 % Example:
 %     Load data and artefacts from disk, reject trials, and save:
@@ -89,6 +101,8 @@ calculateDataloss   = ft_getopt(cfg, 'calculateDataloss', 'no');
 dataLossLabel       = ft_getopt(cfg, 'dataLossLabel', 'dataLoss');
 expectedtrials      = ft_getopt(cfg, 'expectedtrials');
 stage               = ft_getopt(cfg, 'stage', 'artefact');
+cleanEpochs         = ft_getopt(cfg, 'cleanEpochs', 'yes');
+minEpochs           = ft_getopt(cfg, 'minEpochs');
 saveCleanData       = ft_getopt(cfg, 'saveCleanData');
 quiet               = ft_getopt(cfg, 'quiet', 'no');
 overwrite           = ft_getopt(cfg, 'overwrite', 'no');
@@ -99,7 +113,8 @@ else
     quiet = false;
 end
 
-if isempty(lims)
+cleanEpochs = strcmpi(cleanEpochs, 'yes');
+if cleanEpochs && isempty(lims)
     error('Please give cfg.lims struct as input')
 end
 if ~any(strcmp(stage, {'artefact', 'power'}))
@@ -139,7 +154,9 @@ if nargin < 2
         return
     end
 
-    if ~quiet
+    if ~cleanEpochs
+        evalc('[subjectdata, check, data] = bv_check4data(subjectFolderPath, inputName);');
+    elseif ~quiet
         [subjectdata, check, data, artefactdef] = bv_check4data(subjectFolderPath, inputName, artefactData);
     else
         evalc('[subjectdata, check, data, artefactdef] = bv_check4data(subjectFolderPath, inputName, artefactData);');
@@ -177,55 +194,66 @@ else
 end
 
 %% reject artefact trials
-limFields = fieldnames(lims);
-for i = 1:length(limFields)
-    cField = limFields{i};
-
-    out(:,:,i) = artefactdef.(cField).levels > lims.(cField);
-
+if cleanEpochs
+    [goodTrialIndx, badTrial] = bv_findCleanTrials(artefactdef, lims);
+    sampleinfo = artefactdef.sampleinfo;
+else
+    goodTrialIndx = 1:numel(data.trial);
+    badTrial      = false(1, numel(data.trial));
+    sampleinfo    = data.sampleinfo;
 end
 
-% number of artefact-detection windows this subject was evaluated on
-% (see ARTFCTPREPROC/ARTFCTRMCHANNELS's cutintrials/triallength options for
-% the 'artefact' stage); the number that survived is stored further below
-nWindows = size(artefactdef.sampleinfo, 1);
+% number of trials this subject was evaluated on (for the 'artefact' stage
+% these are the artefact-detection windows, see ARTFCTPREPROC/ARTFCTRMCHANNELS's
+% cutintrials/triallength options); the number that survived is stored
+% further below
+nWindows = numel(badTrial);
 
 % dataloss calculation
 if strcmpi(calculateDataloss, 'yes')
-    nBadTrials  = sum(sum(sum(out,3)>0) > 0);
-    nGoodTrials = size(out,2) - nBadTrials;
+    nBadTrials  = sum(badTrial);
+    nGoodTrials = nWindows - nBadTrials;
     subjectdata.(dataLossLabel) = (1 - min([nGoodTrials, expectedtrials]) / expectedtrials) * 100;
 end
 
 %% select clean trials
-goodTrialIndx = find(sum(sum(out,3)>0) == 0);
-
-cfg = [];
-cfg.trl = [artefactdef.sampleinfo(goodTrialIndx,:), zeros(length(goodTrialIndx),1)];
-if isempty(cfg.trl)
+if isempty(goodTrialIndx)
     removingSubjects([],currSubject, 'no clean trials found')
     data = [];
     return
 end
-evalc('data = ft_redefinetrial(cfg, data);');
+if ~isempty(minEpochs) && length(goodTrialIndx) < minEpochs
+    reason = sprintf('too few clean epochs (%d, minimum %d)', length(goodTrialIndx), minEpochs);
+    if isempty(currSubject)
+        error('bv_cleanData: %s', reason)
+    end
+    removingSubjects([], currSubject, reason)
+    data = [];
+    return
+end
+
+if cleanEpochs
+    cfg = [];
+    cfg.trl = [sampleinfo(goodTrialIndx,:), zeros(length(goodTrialIndx),1)];
+    evalc('data = ft_redefinetrial(cfg, data);');
+end
 
 if ~isfield(data, 'trialinfo')
     data.trialinfo = ones(length(data.trial),1);
 end
 
 cfg = [];
-cfg.trl = data.cfg.trl;
-cfg.trl(:,4) = data.trialinfo;
+cfg.trl = [data.sampleinfo, zeros(size(data.sampleinfo,1),1), data.trialinfo(:,1)];
 bv_showTrialAmount(cfg);
 
 switch stage
     case 'artefact'
         subjectdata.nEpochsArtefact      = nWindows;
-        subjectdata.cleanSampleInfo      = artefactdef.sampleinfo(goodTrialIndx,:);
+        subjectdata.cleanSampleInfo      = sampleinfo(goodTrialIndx,:);
         subjectdata.nCleanEpochsArtefact = length(goodTrialIndx);
     case 'power'
         subjectdata.nEpochsPower         = nWindows;
-        subjectdata.cleanSampleInfoPower = artefactdef.sampleinfo(goodTrialIndx,:);
+        subjectdata.cleanSampleInfoPower = sampleinfo(goodTrialIndx,:);
         subjectdata.nCleanEpochsPower    = length(goodTrialIndx);
 end
 

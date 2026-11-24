@@ -51,7 +51,10 @@ function power = bv_extractROIPower(cfg, freq)
 %         Must contain a ``total`` field (used as the denominator for
 %         relative power). All other fields are treated as named bands.
 %         Each value is a ``[low high]`` vector in Hz. Defaults to
-%         delta [1 3], theta [3 5], alpha [5 15], total [1 35].
+%         delta [1 3], theta [4 7], alpha [8 12], beta [13 25],
+%         gamma [26 35], infantTheta [3 6], infantAlpha [6 9] and total
+%         [1 35]. The lowest frequency is included in a band,
+%         the highest is excluded.
 %     cfg.calcMethod (str, optional): Whether to store absolute/relative
 %         power as raw values (``'raw'``) or log10 values (``'log10'``).
 %         Defaults to ``'raw'``.
@@ -100,10 +103,16 @@ defaultROI.LeftParietal  = {'T7','CP5','P7','P3'};
 defaultROI.RightParietal = {'T8','CP6','P8','P4'};
 defaultROI.Occipital     = {'PO3','PO4','O1','Oz','O2','Pz'};
 
-defaultBands.delta = [1 3];
-defaultBands.theta = [3 5];
-defaultBands.alpha = [5 15];
-defaultBands.total = [1 35];
+% Default bands, the same as in setOptions_power.m and as the defaults of
+% bv_calculatePLI. We suggest to keep them in sync.
+defaultBands.delta       = [1 3];   % Hz
+defaultBands.theta       = [4 7];   % Hz
+defaultBands.alpha       = [8 12];  % Hz
+defaultBands.beta        = [13 25]; % Hz
+defaultBands.gamma       = [26 35]; % Hz
+defaultBands.infantTheta = [3 6];   % Hz
+defaultBands.infantAlpha = [6 9];   % Hz
+defaultBands.total       = [1 35];  % Hz
 
 %% get options
 currSubject         = ft_getopt(cfg, 'currSubject');

@@ -31,6 +31,7 @@ setOptions;
 %% General options
 OPTIONS.saveData    = 'yes';      % 'string': Save the results of the steps in the subject folders: 'yes' or 'no' (stored in subjectdata)
 OPTIONS.pathsScript = 'setPaths'; % 'string': Name of the paths script (normally leave as is)
+OPTIONS.triallength = 3;          % [ number ]: Length (seconds) of the epochs the connectivity metric (PLI) is calculated on
 
 %% PLI connectivity options
 % Calculates the phase lag index (PLI), a measure of the connectivity between
@@ -40,7 +41,9 @@ OPTIONS.pathsScript = 'setPaths'; % 'string': Name of the paths script (normally
 % Frequency bands for the connectivity, as [lowest highest] in Hz. The signal
 % is band-pass filtered to each band before the PLI is calculated, and all
 % network metrics are reported per band. You can add, remove or rename bands;
-% the order below is the column order of the results.
+% the order below is the column order of the results. These are the same
+% bands as in setOptionsPower.m (and the defaults of the functions); keep
+% them in sync if you change them.
 freqBands = struct;
 freqBands.delta       = [1 3];   % Hz
 freqBands.theta       = [4 7];   % Hz
@@ -51,13 +54,27 @@ freqBands.infantTheta = [3 6];   % Hz
 freqBands.infantAlpha = [6 9];   % Hz
 freqBands.total       = [1 35];  % Hz
 
-OPTIONS.PLICONNECTIVITY.inputName      = 'APPEND';                             % 'string': Saved result that tells which stretches of clean data to use (the joined clean data)
+% Artefact limits for the epochs. The epochs are cut like the epochs of the
+% power step (same length and overlap, from the same clean data) and checked
+% against the same limits as in setOptionsPower.m: an epoch that exceeds any
+% limit is discarded for all frequency bands. We suggest to keep them in sync.
+epochLims = struct;
+epochLims.abs      = 250;   % [ number ]: largest allowed absolute amplitude (uV)
+epochLims.flatline = 0.1;   % [ number ]: flat-signal measure (1 ./ SD.^2); higher = flatter
+epochLims.kurtosis = 10;    % [ number ]: peakedness of the signal distribution
+epochLims.variance = 2000;  % [ number ]: variance of the signal (uV^2)
+
+OPTIONS.PLICONNECTIVITY.inputName      = 'APPEND';                             % 'string': Saved result the epochs are cut from (the joined clean data, as for the power epochs)
 OPTIONS.PLICONNECTIVITY.outputName     = ['PLI' num2str(OPTIONS.triallength)]; % 'string': Name the connectivity is saved under (PLI + epoch length, e.g. PLI3)
 OPTIONS.PLICONNECTIVITY.saveData       = OPTIONS.saveData;                     % 'string': Save the result of this step in the subject's folder: 'yes' or 'no'
 OPTIONS.PLICONNECTIVITY.pathsFcn       = OPTIONS.pathsScript;                  % 'string': Name of the paths script (normally leave as is)
 OPTIONS.PLICONNECTIVITY.overwrite      = 'no';                                 % 'string': 'yes' = recalculate and replace an existing PLI file; 'no' = keep it and skip the calculation
 OPTIONS.PLICONNECTIVITY.freqBands      = freqBands;                            % struct: Frequency bands in Hz (defined above)
-OPTIONS.PLICONNECTIVITY.triallength    = OPTIONS.triallength;                  % [ number ]: Length (seconds) of the epochs the connectivity is calculated on
+OPTIONS.PLICONNECTIVITY.triallength    = OPTIONS.triallength;                  % [ number ]: Length (seconds) of the epochs the connectivity is calculated on (as in setOptionsPower.m)
+OPTIONS.PLICONNECTIVITY.overlap        = 2/3;                                  % [ number ]: Overlap between consecutive epochs as a fraction (0-1); 2/3 of 3 s epochs = a new epoch every 1 s (as in setOptionsPower.m); 0 = no overlap
+OPTIONS.PLICONNECTIVITY.cleanEpochs    = 'yes';                                % 'string': Remove the noisy epochs, those with an artefact measure above a limit in epochLims: 'yes' or 'no' ('no' keeps every epoch)
+OPTIONS.PLICONNECTIVITY.lims           = epochLims;                            % struct: Thresholds above which an epoch is discarded (defined above)
+OPTIONS.PLICONNECTIVITY.minEpochs      = [];                                   % [ number ]: Minimum number of clean epochs a subject needs; a subject with fewer is removed. [] = no minimum (a subject is then only removed when no clean epoch is left)
 OPTIONS.PLICONNECTIVITY.ntrials        = 'all';                                % 'string': Number of epochs to use per subject; 'all' = every epoch
 OPTIONS.PLICONNECTIVITY.condition      = 'all';                                % 'string': Trigger codes of the conditions to include; 'all' = every condition
 OPTIONS.PLICONNECTIVITY.keeptrials     = 'yes';                                % 'string': Keep the connectivity of every epoch (required by the network metrics): 'yes' or 'no'

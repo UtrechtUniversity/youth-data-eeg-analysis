@@ -153,10 +153,12 @@ OPTIONS.CLEANED.inputName          = 'PREPROCRMCHANNELS';            % 'string':
 OPTIONS.CLEANED.outputName         = 'CLEANED';                      % 'string': Name the cleaned result is saved under
 OPTIONS.CLEANED.artefactData       = 'ARTFCTRMCHANS';                % 'string': Saved artefact values to use (from the artefact step above)
 OPTIONS.CLEANED.saveData           = OPTIONS.saveData;               % 'string': Save the result of this step in the subject's folder: 'yes' or 'no'
+OPTIONS.CLEANED.cleanEpochs        = 'yes';                          % 'string': Remove the noisy segments, those with an artefact measure above a limit below: 'yes' or 'no' ('no' keeps every segment and the limits are not used; normally leave as is)
+OPTIONS.CLEANED.lims               = lims;                           % struct: Thresholds above which a segment is discarded (see above)
+OPTIONS.CLEANED.minEpochs          = [];                             % [ number ]: Minimum number of clean segments a subject needs; a subject with fewer is removed. [] = no minimum (a subject is then only removed when no clean segment is left)
 OPTIONS.CLEANED.stage              = 'artefact';                     % 'string': Pipeline stage of this cleaning, so its segment counts are stored separately from those of the power stage (normally leave as is)
 OPTIONS.CLEANED.saveCleanData      = 'yes';                          % 'string': 'yes' = skip subjects that already have a result (unless overwrite = 'yes')
 OPTIONS.CLEANED.overwrite          = 'no';                           % 'string': 'yes' = redo and replace an existing result; 'no' = skip subjects that already have it
-OPTIONS.CLEANED.lims               = lims;                           % struct: Thresholds above which a segment is discarded (see above)
 OPTIONS.CLEANED.calculateDataloss  = 'no';                           % 'string': Calculate the percentage of data lost by the cleaning and store it for the subject: 'yes' or 'no'
 OPTIONS.CLEANED.dataLossLabel      = 'dataLossAfter';                % 'string': Name under which that percentage is stored (only if calculateDataloss = 'yes')
 OPTIONS.CLEANED.expectedtrials     = 360./OPTIONS.artifacttrllength; % [ number ]: Number of segments in a full recording (only needed if calculateDataloss = 'yes')
