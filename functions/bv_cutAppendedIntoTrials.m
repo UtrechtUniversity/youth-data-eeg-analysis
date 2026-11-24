@@ -28,9 +28,6 @@ function [data, finished] = bv_cutAppendedIntoTrials(cfg, dataOld)
 %         Defaults to ``'no'``.
 %     cfg.pathsFcn (str, optional): Paths function filename. Must resolve
 %         to a valid file on the MATLAB path. Defaults to ``'setPaths'``.
-%     cfg.optionsFcn (str, optional): Options function filename. Must
-%         resolve to a valid file on the MATLAB path. Defaults to
-%         ``'setOptions'``.
 %     dataOld (struct, optional): FieldTrip data structure containing one
 %         or more continuous trials/segments to cut. If omitted, data is
 %         loaded from disk using ``cfg.currSubject`` and ``cfg.inputStr``.
@@ -72,7 +69,6 @@ saveData    = ft_getopt(cfg, 'saveData', 'no');
 ntrials     = ft_getopt(cfg, 'ntrials', 'all');
 overwrite   = ft_getopt(cfg, 'overwrite', 'no');
 pathsFcn    = ft_getopt(cfg, 'pathsFcn', 'setPaths');
-optionsFcn  = ft_getopt(cfg, 'optionsFcn', 'setOptions');
 
 if isempty(triallength)
     error('config struct does not contain triallength')
@@ -82,7 +78,6 @@ if nargin < 2
     disp(currSubject)
 
     eval(pathsFcn)
-    eval(optionsFcn)
 
     subjectFolderPath = [PATHS.SUBJECTS filesep currSubject];
     [subjectdata, check] = bv_check4data(subjectFolderPath);

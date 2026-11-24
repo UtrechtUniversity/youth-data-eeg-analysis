@@ -63,4 +63,4 @@ for i = 1:length(subjectdirflags)
 end
 fprintf('done! \n')
 subjectdatasummary = bv_orderSubjectFields(subjectdatasummary);
-subjectresults = struct2table(subjectdatasummary);
+subjectresults = struct2table(subjectdatasummary, 'AsArray', true);

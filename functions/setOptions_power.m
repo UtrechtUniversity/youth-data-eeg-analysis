@@ -64,6 +64,7 @@ OPTIONS.CLEANEPOCHS.inputName      = 'EPOCHS';            % 'string': Saved epoc
 OPTIONS.CLEANEPOCHS.artefactData   = 'ARTFCTEPOCHS';      % 'string': Saved artefact values to use (from the artefact step above)
 OPTIONS.CLEANEPOCHS.outputName     = 'CLEANEPOCHS';       % 'string': Name the clean epochs are saved under
 OPTIONS.CLEANEPOCHS.saveData       = OPTIONS.saveData;    % 'string': Save the result of this step in the subject's folder: 'yes' or 'no'
+OPTIONS.CLEANEPOCHS.stage          = 'power';             % 'string': Pipeline stage of this cleaning, so its epoch counts are stored separately from those of the preprocessing stage (normally leave as is)
 OPTIONS.CLEANEPOCHS.saveCleanData  = 'yes';               % 'string': 'yes' = skip subjects that already have a result (unless overwrite = 'yes')
 OPTIONS.CLEANEPOCHS.overwrite      = 'no';                % 'string': 'yes' = redo and replace an existing result; 'no' = skip subjects that already have it
 OPTIONS.CLEANEPOCHS.lims           = epochLims;           % struct: Thresholds above which an epoch is discarded (see above)

@@ -315,7 +315,14 @@ for subjIndex = 1:length(files)
         % continue above never leave gaps with subjectName = [] in the
         % struct array - those gaps corrupt every later
         % ismember(...subjectName) lookup against SubjectSummary.mat
-        subjectdatasummary(nSubjects + 1) = bv_stripSummaryOnlyFields(subjectdata);
+        strippedData = bv_stripSummaryOnlyFields(subjectdata);
+        if isempty(subjectdatasummary)
+            % first subject: assign directly, because an empty struct without
+            % fields cannot take an element that has fields
+            subjectdatasummary = strippedData;
+        else
+            subjectdatasummary(nSubjects + 1) = strippedData;
+        end
     end
 
     clear subjectdata

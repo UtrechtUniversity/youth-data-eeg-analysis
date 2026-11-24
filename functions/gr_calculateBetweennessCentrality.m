@@ -71,9 +71,6 @@ function bc = gr_calculateBetweennessCentrality(cfg, connectivity)
 %         holds the per-epoch connectivity. Defaults to ``'plispctrm'``.
 %     cfg.pathsFcn (str, optional): Paths function filename. Must resolve to
 %         a valid file on the MATLAB path. Defaults to ``'setPaths'``.
-%     cfg.optionsFcn (str, optional): Options function filename. Must
-%         resolve to a valid file on the MATLAB path. Defaults to
-%         ``'setOptionsNetmet'``.
 %     cfg.overwrite (str, optional): Whether to overwrite existing output
 %         (``'yes'`` or ``'no'``). Only checked when no connectivity struct
 %         is provided. Defaults to ``'no'``.
@@ -129,7 +126,6 @@ ROI                  = ft_getopt(cfg, 'ROI', defaultROI);
 edgeType             = ft_getopt(cfg, 'edgeType', 'weighted');
 spctrmfield          = ft_getopt(cfg, 'spctrmfield', 'plispctrm');
 pathsFcn             = ft_getopt(cfg, 'pathsFcn', 'setPaths');
-optionsFcn           = ft_getopt(cfg, 'optionsFcn', 'setOptionsNetmet');
 overwrite            = ft_getopt(cfg, 'overwrite', 'no');
 quiet                = ft_getopt(cfg, 'quiet', 'no');
 
@@ -170,7 +166,6 @@ end
 if nargin < 2
     if ~quiet; disp(currSubject); end
     eval(pathsFcn)
-    eval(optionsFcn)
 
     subjectFolderPath = fullfile(PATHS.SUBJECTS, currSubject);
 
@@ -242,8 +237,8 @@ bands     = connectivity.freq;            % cell of band-name strings
 trialinfo = connectivity.trialinfo;
 
 if size(spctrm, 3) ~= size(trialinfo, 1)
-    error(['gr_calculateBetweennessCentrality: connectivity.%%s has %%d entries along its epoch dimension ' ...
-        'but trialinfo has %%d: per-epoch PLI is required (bv_calculatePLI with ' ...
+    error(['gr_calculateBetweennessCentrality: connectivity.%s has %d entries along its epoch dimension ' ...
+        'but trialinfo has %d: per-epoch PLI is required (bv_calculatePLI with ' ...
         'cfg.keeptrials = ''yes'')'], spctrmfield, size(spctrm, 3), size(trialinfo, 1))
 end
 

@@ -69,9 +69,6 @@ function qmod = gr_calculateQModularity(cfg, connectivity)
 %         holds the per-epoch connectivity. Defaults to ``'plispctrm'``.
 %     cfg.pathsFcn (str, optional): Paths function filename. Must resolve to
 %         a valid file on the MATLAB path. Defaults to ``'setPaths'``.
-%     cfg.optionsFcn (str, optional): Options function filename. Must
-%         resolve to a valid file on the MATLAB path. Defaults to
-%         ``'setOptionsNetmet'``.
 %     cfg.overwrite (str, optional): Whether to overwrite existing output
 %         (``'yes'`` or ``'no'``). Only checked when no connectivity struct
 %         is provided. Defaults to ``'no'``.
@@ -128,7 +125,6 @@ edgeType             = ft_getopt(cfg, 'edgeType', 'weighted');
 gamma                = ft_getopt(cfg, 'gamma', 1);
 spctrmfield          = ft_getopt(cfg, 'spctrmfield', 'plispctrm');
 pathsFcn             = ft_getopt(cfg, 'pathsFcn', 'setPaths');
-optionsFcn           = ft_getopt(cfg, 'optionsFcn', 'setOptionsNetmet');
 overwrite            = ft_getopt(cfg, 'overwrite', 'no');
 quiet                = ft_getopt(cfg, 'quiet', 'no');
 
@@ -169,7 +165,6 @@ end
 if nargin < 2
     if ~quiet; disp(currSubject); end
     eval(pathsFcn)
-    eval(optionsFcn)
 
     subjectFolderPath = fullfile(PATHS.SUBJECTS, currSubject);
 

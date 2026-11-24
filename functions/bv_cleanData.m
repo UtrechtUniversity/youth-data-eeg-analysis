@@ -1,8 +1,13 @@
 function data = bv_cleanData(cfg, data, artefactdef)
 % Removes artefact-ridden trials from a FieldTrip data structure.
 %
-% Trials exceeding any threshold in ``cfg.lims`` are discarded. Clean trial
-% sample indices are stored in subjectdata.cleanSampleInfo.
+% Trials exceeding any threshold in ``cfg.lims`` are discarded. The number
+% of trials before and after, and the sample indices of the clean trials, are
+% stored in subjectdata. Which fields are used depends on ``cfg.stage``, so
+% the cleaning of the preprocessing stage and that of the power stage do not
+% overwrite each other: ``'artefact'`` writes ``nEpochsArtefact``,
+% ``nCleanEpochsArtefact`` and ``cleanSampleInfo``; ``'power'`` writes
+% ``nEpochsPower``, ``nCleanEpochsPower`` and ``cleanSampleInfoPower``.
 %
 % Args:
 %     cfg.currSubject (str): Subject folder name. Required when no data is
@@ -19,6 +24,11 @@ function data = bv_cleanData(cfg, data, artefactdef)
 %         field must match a metric in the artefact struct (``kurtosis``,
 %         ``variance``, ``jump``, ``abs``, ``range``, ``flatline``).
 %         Required.
+%     cfg.stage (str, optional): Pipeline stage this cleaning belongs to,
+%         which decides the subjectdata fields the trial counts and clean
+%         sample indices are stored in (see above): ``'artefact'`` (the
+%         preprocessing stage) or ``'power'`` (the sliding-window epochs of
+%         the power stage). Defaults to ``'artefact'``.
 %     cfg.calculateDataloss (str, optional): Whether to compute and store
 %         the percentage of lost data in subjectdata (``'yes'`` or
 %         ``'no'``). Defaults to ``'no'``.
@@ -78,6 +88,7 @@ saveData            = ft_getopt(cfg, 'saveData');
 calculateDataloss   = ft_getopt(cfg, 'calculateDataloss', 'no');
 dataLossLabel       = ft_getopt(cfg, 'dataLossLabel', 'dataLoss');
 expectedtrials      = ft_getopt(cfg, 'expectedtrials');
+stage               = ft_getopt(cfg, 'stage', 'artefact');
 saveCleanData       = ft_getopt(cfg, 'saveCleanData');
 quiet               = ft_getopt(cfg, 'quiet', 'no');
 overwrite           = ft_getopt(cfg, 'overwrite', 'no');
@@ -90,6 +101,9 @@ end
 
 if isempty(lims)
     error('Please give cfg.lims struct as input')
+end
+if ~any(strcmp(stage, {'artefact', 'power'}))
+    error('bv_cleanData: unknown cfg.stage ''%s'' (valid: artefact, power)', num2str(stage))
 end
 
 %% load data
@@ -172,9 +186,9 @@ for i = 1:length(limFields)
 end
 
 % number of artefact-detection windows this subject was evaluated on
-% (see ARTFCTPREPROC/ARTFCTRMCHANNELS's cutintrials/triallength options;
-% nCleanEpochsArtefact below records how many survived)
-subjectdata.nEpochsArtefact = size(artefactdef.sampleinfo, 1);
+% (see ARTFCTPREPROC/ARTFCTRMCHANNELS's cutintrials/triallength options for
+% the 'artefact' stage); the number that survived is stored further below
+nWindows = size(artefactdef.sampleinfo, 1);
 
 % dataloss calculation
 if strcmpi(calculateDataloss, 'yes')
@@ -204,8 +218,16 @@ cfg.trl = data.cfg.trl;
 cfg.trl(:,4) = data.trialinfo;
 bv_showTrialAmount(cfg);
 
-subjectdata.cleanSampleInfo = artefactdef.sampleinfo(goodTrialIndx,:);
-subjectdata.nCleanEpochsArtefact = length(goodTrialIndx);
+switch stage
+    case 'artefact'
+        subjectdata.nEpochsArtefact      = nWindows;
+        subjectdata.cleanSampleInfo      = artefactdef.sampleinfo(goodTrialIndx,:);
+        subjectdata.nCleanEpochsArtefact = length(goodTrialIndx);
+    case 'power'
+        subjectdata.nEpochsPower         = nWindows;
+        subjectdata.cleanSampleInfoPower = artefactdef.sampleinfo(goodTrialIndx,:);
+        subjectdata.nCleanEpochsPower    = length(goodTrialIndx);
+end
 
 %% save
 if strcmpi(saveData, 'yes')

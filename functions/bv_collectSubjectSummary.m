@@ -118,6 +118,10 @@ if iscell(raw)
     s = strjoin(cellfun(@char, raw, 'UniformOutput', false), '; ');
 elseif ischar(raw)
     s = raw;
+elseif isdatetime(raw)
+    s = char(raw);
+elseif isstring(raw)
+    s = strjoin(cellstr(raw), '; ');
 else
     s = mat2str(raw);
 end

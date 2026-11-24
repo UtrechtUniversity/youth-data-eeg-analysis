@@ -52,7 +52,6 @@ function swp = bv_calculateSWP(cfg, connectivity)
 %     cfg.spctrmfield (str): Connectivity field to use (default
 %         ``'plispctrm'``).
 %     cfg.pathsFcn (str): Paths function (default ``'setPaths'``).
-%     cfg.optionsFcn (str): Options function (default ``'setOptionsNetmet'``).
 %     cfg.overwrite (str): ``'yes'``/``'no'`` (default ``'no'``).
 %     cfg.quiet (str): ``'yes'``/``'no'`` (default ``'no'``).
 %     connectivity (struct, optional): PLI connectivity struct from
@@ -85,7 +84,6 @@ computeROI           = ft_getopt(cfg, 'computeROI', 'yes');
 ROI                  = ft_getopt(cfg, 'ROI', defaultROI);
 spctrmfield          = ft_getopt(cfg, 'spctrmfield', 'plispctrm');
 pathsFcn             = ft_getopt(cfg, 'pathsFcn', 'setPaths');
-optionsFcn           = ft_getopt(cfg, 'optionsFcn', 'setOptionsNetmet');
 overwrite            = ft_getopt(cfg, 'overwrite', 'no');
 quiet                = ft_getopt(cfg, 'quiet', 'no');
 
@@ -120,7 +118,6 @@ end
 if nargin < 2
     if ~quiet; disp(currSubject); end
     eval(pathsFcn)
-    eval(optionsFcn)
 
     subjectFolderPath = fullfile(PATHS.SUBJECTS, currSubject);
 
