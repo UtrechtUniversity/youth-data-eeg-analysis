@@ -24,9 +24,9 @@
 % docstring of the function named above each block describes every setting
 % in full.
 
-% Load the preprocessing settings from setOptions.m, which this file builds
+% Load the preprocessing settings from setOptionsPreproc.m, which this file builds
 % on (e.g. the re-referencing settings and the epoch length).
-setOptions;
+setOptionsPreproc;
 
 %% General options
 OPTIONS.saveData    = 'yes';      % 'string': Save the results of the steps in the subject folders: 'yes' or 'no' (stored in subjectdata)
@@ -36,7 +36,7 @@ OPTIONS.triallength = 3;          % [ number ]: Length (seconds) of the epochs t
 %% PLI connectivity options
 % Calculates the phase lag index (PLI), a measure of the connectivity between
 % two channels, for every pair of channels, epoch and frequency band.
-% See bv_calculatePLI
+% See calculatePLI
 %
 % Frequency bands for the connectivity, as [lowest highest] in Hz. The signal
 % is band-pass filtered to each band before the PLI is calculated, and all
@@ -78,7 +78,7 @@ OPTIONS.PLICONNECTIVITY.minEpochs      = [];                                   %
 OPTIONS.PLICONNECTIVITY.ntrials        = 'all';                                % 'string': Number of epochs to use per subject; 'all' = every epoch
 OPTIONS.PLICONNECTIVITY.condition      = 'all';                                % 'string': Trigger codes of the conditions to include; 'all' = every condition
 OPTIONS.PLICONNECTIVITY.keeptrials     = 'yes';                                % 'string': Keep the connectivity of every epoch (required by the network metrics): 'yes' or 'no'
-OPTIONS.PLICONNECTIVITY.preprocOptions = OPTIONS.REREF;                        % struct: Preprocessing settings used to re-read the raw recording before the PLI is calculated (the REREF step of setOptions.m; normally leave as is)
+OPTIONS.PLICONNECTIVITY.preprocOptions = OPTIONS.REREF;                        % struct: Preprocessing settings used to re-read the raw recording before the PLI is calculated (the REREF step of setOptionsPreproc.m; normally leave as is)
 
 %% ROI definitions (shared by the network metrics)
 % Regions of interest: each name is followed by the channels it consists of.
@@ -93,7 +93,7 @@ ROI.Occipital     = {'PO3','PO4','O1','Oz','O2','Pz'};
 
 %% FC strength options
 % Functional connectivity strength: the mean connectivity (PLI) between the
-% channels of the network. See bv_calculateStrength
+% channels of the network. See calculateStrength
 OPTIONS.STRENGTH.inputName       = OPTIONS.PLICONNECTIVITY.outputName; % 'string': Saved PLI connectivity file the strength is calculated from
 OPTIONS.STRENGTH.outputName      = 'STRENGTH';                         % 'string': Name the strength results are saved under
 OPTIONS.STRENGTH.conditions      = [129 139];                          % [ number ]: Trigger codes of the conditions to report separately; results over all epochs ('Global') are always added; [] = only global
@@ -107,7 +107,7 @@ OPTIONS.STRENGTH.pathsFcn        = OPTIONS.pathsScript;                % 'string
 OPTIONS.STRENGTH.overwrite       = 'yes';                              % 'string': 'yes' = redo and replace an existing result; 'no' = skip subjects that already have it
 
 %% FC strength summary options
-% Collects the results of all subjects in one file. See bv_collectNetmetSummary
+% Collects the results of all subjects in one file. See collectNetmetSummary
 OPTIONS.STRENGTHSUMMARY.inputName  = OPTIONS.STRENGTH.outputName; % 'string': Saved per-subject strength results to collect
 OPTIONS.STRENGTHSUMMARY.outputName = 'strength_summary';          % 'string': Name of the summary file (no extension; saved in the summary folder, PATHS.SUMMARY)
 OPTIONS.STRENGTHSUMMARY.format     = 'both';                      % 'string': File type(s) to write: 'csv', 'mat' or 'both'
@@ -117,7 +117,7 @@ OPTIONS.STRENGTHSUMMARY.pathsFcn   = OPTIONS.pathsScript;         % 'string': Na
 % Small-world propensity: how strongly the network combines clustered local
 % connections with short paths between channels (small-world organisation),
 % in a way that is comparable between networks of different density.
-% See bv_calculateSWP
+% See calculateSWP
 OPTIONS.SWP.inputName       = OPTIONS.PLICONNECTIVITY.outputName; % 'string': Saved PLI connectivity file the small-world propensity is calculated from
 OPTIONS.SWP.outputName      = 'SWP';                              % 'string': Name the small-world propensity results are saved under
 OPTIONS.SWP.conditions      = [129 139];                          % [ number ]: Trigger codes of the conditions to report separately; results over all epochs ('Global') are always added; [] = only global
@@ -131,7 +131,7 @@ OPTIONS.SWP.pathsFcn        = OPTIONS.pathsScript;                % 'string': Na
 OPTIONS.SWP.overwrite       = 'yes';                              % 'string': 'yes' = redo and replace an existing result; 'no' = skip subjects that already have it
 
 %% SWP summary options
-% Collects the results of all subjects in one file. See bv_collectNetmetSummary
+% Collects the results of all subjects in one file. See collectNetmetSummary
 OPTIONS.SWPSUMMARY.inputName  = OPTIONS.SWP.outputName; % 'string': Saved per-subject small-world propensity results to collect
 OPTIONS.SWPSUMMARY.outputName = 'swp_summary';          % 'string': Name of the summary file (no extension; saved in the summary folder, PATHS.SUMMARY)
 OPTIONS.SWPSUMMARY.format     = 'both';                 % 'string': File type(s) to write: 'csv', 'mat' or 'both'
@@ -141,7 +141,7 @@ OPTIONS.SWPSUMMARY.pathsFcn   = OPTIONS.pathsScript;    % 'string': Name of the 
 % Modularity (Q): how well the network divides into modules (groups of
 % channels that are strongly connected to each other and weakly to the rest).
 % Needs the Brain Connectivity Toolbox that comes with FieldTrip.
-% See gr_calculateQModularity
+% See calculateQModularity
 OPTIONS.QMOD.inputName       = OPTIONS.PLICONNECTIVITY.outputName; % 'string': Saved PLI connectivity file the modularity is calculated from
 OPTIONS.QMOD.outputName      = 'QMOD';                             % 'string': Name the modularity results are saved under
 OPTIONS.QMOD.conditions      = [129 139];                          % [ number ]: Trigger codes of the conditions to report separately; results over all epochs ('Global') are always added; [] = only global
@@ -157,7 +157,7 @@ OPTIONS.QMOD.pathsFcn        = OPTIONS.pathsScript;                % 'string': N
 OPTIONS.QMOD.overwrite       = 'yes';                              % 'string': 'yes' = redo and replace an existing result; 'no' = skip subjects that already have it
 
 %% Q modularity summary options
-% Collects the results of all subjects in one file. See bv_collectNetmetSummary
+% Collects the results of all subjects in one file. See collectNetmetSummary
 OPTIONS.QMODSUMMARY.inputName  = OPTIONS.QMOD.outputName; % 'string': Saved per-subject modularity results to collect
 OPTIONS.QMODSUMMARY.outputName = 'qmod_summary';          % 'string': Name of the summary file (no extension; saved in the summary folder, PATHS.SUMMARY)
 OPTIONS.QMODSUMMARY.format     = 'both';                  % 'string': File type(s) to write: 'csv', 'mat' or 'both'
@@ -167,7 +167,7 @@ OPTIONS.QMODSUMMARY.pathsFcn   = OPTIONS.pathsScript;     % 'string': Name of th
 % Clustering coefficient: how strongly the neighbours of a channel are
 % connected to each other (local connectedness), averaged over channels.
 % Needs the Brain Connectivity Toolbox that comes with FieldTrip.
-% See gr_calculateClusteringWs
+% See calculateClusteringWs
 OPTIONS.CLUSTERING.inputName       = OPTIONS.PLICONNECTIVITY.outputName; % 'string': Saved PLI connectivity file the clustering coefficient is calculated from
 OPTIONS.CLUSTERING.outputName      = 'CLUSTERING';                       % 'string': Name the clustering coefficient results are saved under
 OPTIONS.CLUSTERING.conditions      = [129 139];                          % [ number ]: Trigger codes of the conditions to report separately; results over all epochs ('Global') are always added; [] = only global
@@ -182,7 +182,7 @@ OPTIONS.CLUSTERING.pathsFcn        = OPTIONS.pathsScript;                % 'stri
 OPTIONS.CLUSTERING.overwrite       = 'yes';                              % 'string': 'yes' = redo and replace an existing result; 'no' = skip subjects that already have it
 
 %% Clustering summary options
-% Collects the results of all subjects in one file. See bv_collectNetmetSummary
+% Collects the results of all subjects in one file. See collectNetmetSummary
 OPTIONS.CLUSTERINGSUMMARY.inputName  = OPTIONS.CLUSTERING.outputName; % 'string': Saved per-subject clustering coefficient results to collect
 OPTIONS.CLUSTERINGSUMMARY.outputName = 'clustering_summary';          % 'string': Name of the summary file (no extension; saved in the summary folder, PATHS.SUMMARY)
 OPTIONS.CLUSTERINGSUMMARY.format     = 'both';                        % 'string': File type(s) to write: 'csv', 'mat' or 'both'
@@ -193,7 +193,7 @@ OPTIONS.CLUSTERINGSUMMARY.pathsFcn   = OPTIONS.pathsScript;           % 'string'
 % channel to another (shorter = more efficient communication), with related
 % measures such as global efficiency.
 % Needs the Brain Connectivity Toolbox that comes with FieldTrip.
-% See gr_calculatePathlengthWs
+% See calculatePathlengthWs
 OPTIONS.PATHLENGTH.inputName       = OPTIONS.PLICONNECTIVITY.outputName;                        % 'string': Saved PLI connectivity file the path length measures is calculated from
 OPTIONS.PATHLENGTH.outputName      = 'PATHLENGTH';                                              % 'string': Name the path length measures results are saved under
 OPTIONS.PATHLENGTH.conditions      = [129 139];                                                 % [ number ]: Trigger codes of the conditions to report separately; results over all epochs ('Global') are always added; [] = only global
@@ -209,7 +209,7 @@ OPTIONS.PATHLENGTH.pathsFcn        = OPTIONS.pathsScript;                       
 OPTIONS.PATHLENGTH.overwrite       = 'yes';                                                     % 'string': 'yes' = redo and replace an existing result; 'no' = skip subjects that already have it
 
 %% Path length summary options
-% Collects the results of all subjects in one file. See bv_collectNetmetSummary
+% Collects the results of all subjects in one file. See collectNetmetSummary
 OPTIONS.PATHLENGTHSUMMARY.inputName  = OPTIONS.PATHLENGTH.outputName; % 'string': Saved per-subject path length measures results to collect
 OPTIONS.PATHLENGTHSUMMARY.outputName = 'pathlength_summary';          % 'string': Name of the summary file (no extension; saved in the summary folder, PATHS.SUMMARY)
 OPTIONS.PATHLENGTHSUMMARY.format     = 'both';                        % 'string': File type(s) to write: 'csv', 'mat' or 'both'
@@ -220,7 +220,7 @@ OPTIONS.PATHLENGTHSUMMARY.pathsFcn   = OPTIONS.pathsScript;           % 'string'
 % between other channels (a measure of how much of a hub it is), averaged
 % over channels.
 % Needs the Brain Connectivity Toolbox that comes with FieldTrip.
-% See gr_calculateBetweennessCentrality
+% See calculateBetweennessCentrality
 OPTIONS.BC.inputName       = OPTIONS.PLICONNECTIVITY.outputName; % 'string': Saved PLI connectivity file the betweenness centrality is calculated from
 OPTIONS.BC.outputName      = 'BC';                               % 'string': Name the betweenness centrality results are saved under
 OPTIONS.BC.conditions      = [129 139];                          % [ number ]: Trigger codes of the conditions to report separately; results over all epochs ('Global') are always added; [] = only global
@@ -235,13 +235,13 @@ OPTIONS.BC.pathsFcn        = OPTIONS.pathsScript;                % 'string': Nam
 OPTIONS.BC.overwrite       = 'yes';                              % 'string': 'yes' = redo and replace an existing result; 'no' = skip subjects that already have it
 
 %% Betweenness centrality summary options
-% Collects the results of all subjects in one file. See bv_collectNetmetSummary
+% Collects the results of all subjects in one file. See collectNetmetSummary
 OPTIONS.BCSUMMARY.inputName  = OPTIONS.BC.outputName; % 'string': Saved per-subject betweenness centrality results to collect
 OPTIONS.BCSUMMARY.outputName = 'bc_summary';          % 'string': Name of the summary file (no extension; saved in the summary folder, PATHS.SUMMARY)
 OPTIONS.BCSUMMARY.format     = 'both';                % 'string': File type(s) to write: 'csv', 'mat' or 'both'
 OPTIONS.BCSUMMARY.pathsFcn   = OPTIONS.pathsScript;   % 'string': Name of the paths script (normally leave as is)
 
 %% Subject summary collection options
-% Collects the information of all subjects in one file. See bv_collectSubjectSummary
+% Collects the information of all subjects in one file. See collectSubjectSummary
 OPTIONS.SUBJECTSUMMARY.outputFile = 'SubjectSummary.csv'; % 'string': Name of the summary file with one row per subject (saved in the summary folder, PATHS.SUMMARY)
 OPTIONS.SUBJECTSUMMARY.pathsFcn   = OPTIONS.pathsScript;  % 'string': Name of the paths script (normally leave as is)

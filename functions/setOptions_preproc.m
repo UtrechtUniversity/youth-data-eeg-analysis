@@ -1,6 +1,6 @@
 %% Settings for Preprocessing
 % This file holds the settings of all preprocessing steps. A copy is placed in
-% every new analysis folder (as setOptions.m), so it also records the
+% every new analysis folder (as setOptionsPreproc.m), so it also records the
 % settings the analysis was run with. Change the values to the right of the
 % '=' signs; the text after the '%' explains each setting. The power and
 % network-metric settings build on this file.
@@ -26,7 +26,7 @@ OPTIONS.artifacttrllength       = 1;          % [ number ]: Length (seconds) of 
 OPTIONS.pathsScript             = 'setPaths'; % 'string': Name of the paths script (normally leave as is)
 
 %% Create subject folders
-% see bv_createSubjectFolders_NewStruct
+% see createSubjectFolders
 OPTIONS.CREATEFOLDERS.pathsFcn      = OPTIONS.pathsScript; % 'string': Name of the paths script (normally leave as is)
 OPTIONS.CREATEFOLDERS.inputName     = [];                  % 'string': Only needed when dataType is 'mat' (see below): name of the earlier step whose saved result is the input (e.g. 'PREPROC')
 OPTIONS.CREATEFOLDERS.rawdelim      = '_';                 % 'string': Character that separates the parts of the raw file names (e.g. '_' in B00002_10m.bdf)
@@ -43,14 +43,14 @@ OPTIONS.CREATEFOLDERS.seamTolerance = 1;                   % [ number ]: Gaps an
 
 %% Preprocessing options
 % Reads the raw recording, resamples and filters it, and cuts it into trials
-% around the triggers. See bv_preprocResample
+% around the triggers. See preprocResample
 OPTIONS.PREPROC.pathsFcn        = OPTIONS.pathsScript;           % 'string': Name of the paths script (normally leave as is)
 OPTIONS.PREPROC.outputName      = 'PREPROC';                     % 'string': Name the result is saved under (file: [subject]_PREPROC.mat)
 OPTIONS.PREPROC.saveData        = OPTIONS.saveData;              % 'string': Save the result of this step in the subject's folder: 'yes' or 'no'
 OPTIONS.PREPROC.overwrite       = 'yes';                         % 'string': 'yes' = redo and replace an existing result; 'no' = skip subjects that already have it
 OPTIONS.PREPROC.channels        = {'EEG'};                       % { cell }: Channels to read in; {'EEG'} = all EEG channels (see ft_channelselection)
 OPTIONS.PREPROC.chanindx        = [];                            % [ number ]: Alternatively, the indices of the channels to read in (overrules 'channels'); [] = not used
-OPTIONS.PREPROC.trialfun        = 'trialfun_YOUth_connectivity'; % 'string': Name of the function that cuts the recording into trials around the triggers; '' = no cutting (see ft_definetrial)
+OPTIONS.PREPROC.trialfun        = 'trialfunYOUthConnectivity'; % 'string': Name of the function that cuts the recording into trials around the triggers; '' = no cutting (see ft_definetrial)
 OPTIONS.PREPROC.pretrig         = [];                            % [ number ]: Seconds to include before each trigger; [] = default of the trial function (0 s)
 OPTIONS.PREPROC.posttrig        = [];                            % [ number ]: Seconds to include after each trigger; [] = default of the trial function (60 s)
 OPTIONS.PREPROC.resampleFs      = 512;                           % [ number ]: New sampling rate in Hz; [] = no resampling (see ft_resampledata)
@@ -69,7 +69,7 @@ OPTIONS.PREPROC.waveletThresh   = 'no';                          % 'string': Wav
 
 %% Calculate artifact values after preprocessing
 % Measures how noisy each short segment of each channel is, as the basis for
-% finding bad channels. See bv_createArtefactStruct
+% finding bad channels. See createArtefactStruct
 OPTIONS.ARTFCTPREPROC.pathsFcn        = OPTIONS.pathsScript;                        % 'string': Name of the paths script (normally leave as is)
 OPTIONS.ARTFCTPREPROC.inputName       = 'PREPROC';                                  % 'string': Saved result the artefacts are calculated on
 OPTIONS.ARTFCTPREPROC.outputName      = 'ARTFCTBEFORE';                             % 'string': Name the artefact values are saved under
@@ -84,7 +84,7 @@ OPTIONS.ARTFCTPREPROC.analyses        = {'kurtosis','variance', 'flatline', 'abs
 % too many bad channels. Only flag channels that are flat or extremely noisy,
 % so much so that they would distort the average reference. The thresholds
 % below decide when a segment counts as bad for a channel.
-% See bv_removeChannels
+% See removeChannels
 lims = struct;
 lims.abs = 250;       % [ number ]: largest allowed absolute amplitude (uV)
 lims.flatline = 0.1;  % [ number ]: flat-signal measure (1 ./ SD.^2); higher = flatter
@@ -106,14 +106,14 @@ OPTIONS.RMCHANNELS.repairchans     = 'no';                           % 'string':
 %% Preprocessing + reref options without removed channels
 % Repeats the preprocessing, now leaving out the flagged channels,
 % interpolating them from their neighbours and re-referencing to the average
-% of all channels. See bv_preprocResample
+% of all channels. See preprocResample
 OPTIONS.REREF.pathsFcn        = OPTIONS.pathsScript;           % 'string': Name of the paths script (normally leave as is)
 OPTIONS.REREF.outputName      = 'PREPROCRMCHANNELS';           % 'string': Name the result is saved under (file: [subject]_PREPROCRMCHANNELS.mat)
 OPTIONS.REREF.saveData        = OPTIONS.saveData;              % 'string': Save the result of this step in the subject's folder: 'yes' or 'no'
 OPTIONS.REREF.overwrite       = 'yes';                         % 'string': 'yes' = redo and replace an existing result; 'no' = skip subjects that already have it
 OPTIONS.REREF.channels        = {'EEG'};                       % { cell }: Channels to read in; {'EEG'} = all EEG channels (see ft_channelselection)
 OPTIONS.REREF.chanindx        = [];                            % [ number ]: Alternatively, the numbers of the channels to read in (overrules 'channels'); [] = not used
-OPTIONS.REREF.trialfun        = 'trialfun_YOUth_connectivity'; % 'string': Name of the function that cuts the recording into trials around the triggers; '' = no cutting (see ft_definetrial)
+OPTIONS.REREF.trialfun        = 'trialfunYOUthConnectivity'; % 'string': Name of the function that cuts the recording into trials around the triggers; '' = no cutting (see ft_definetrial)
 OPTIONS.REREF.pretrig         = [];                            % [ number ]: Seconds to include before each trigger; [] = default of the trial function (0 s)
 OPTIONS.REREF.posttrig        = [];                            % [ number ]: Seconds to include after each trigger; [] = default of the trial function (60 s)
 OPTIONS.REREF.resampleFs      = 512;                           % [ number ]: New sampling rate in Hz; [] = no resampling (see ft_resampledata)
@@ -132,7 +132,7 @@ OPTIONS.REREF.waveletThresh   = 'no';                          % 'string': Wavel
 
 %% Calculate artifact values after preprocessing
 % Measures the artefacts again, now on the re-referenced data, as the basis
-% for removing bad segments. See bv_createArtefactStruct
+% for removing bad segments. See createArtefactStruct
 OPTIONS.ARTFCTRMCHANNELS.pathsFcn        = OPTIONS.pathsScript;                        % 'string': Name of the paths script (normally leave as is)
 OPTIONS.ARTFCTRMCHANNELS.inputName       = 'PREPROCRMCHANNELS';                        % 'string': Saved result the artefacts are calculated on
 OPTIONS.ARTFCTRMCHANNELS.outputName      = 'ARTFCTRMCHANS';                            % 'string': Name the artefact values are saved under
@@ -144,7 +144,7 @@ OPTIONS.ARTFCTRMCHANNELS.analyses        = {'kurtosis','variance', 'flatline', '
 
 %% Clean data options
 % Removes the short segments with artefacts: a segment that exceeds any of the
-% thresholds below is discarded. See bv_cleanData
+% thresholds below is discarded. See cleanData
 lims = struct;
 lims.abs = 250;       % [ number ]: largest allowed absolute amplitude (uV)
 lims.flatline = 0.1;  % [ number ]: flat-signal measure (1 ./ SD.^2); higher = flatter
@@ -167,7 +167,7 @@ OPTIONS.CLEANED.dataLossLabel      = 'dataLossAfter';                % 'string':
 OPTIONS.CLEANED.expectedtrials     = 360./OPTIONS.artifacttrllength; % [ number ]: Number of segments in a full recording (only needed if calculateDataloss = 'yes')
 
 %% Append
-% Joins the remaining clean segments back together. See bv_appendfieldtripdata
+% Joins the remaining clean segments back together. See appendFieldtripData
 OPTIONS.APPENDED.pathsFcn     = OPTIONS.pathsScript; % 'string': Name of the paths script (normally leave as is)
 OPTIONS.APPENDED.inputName    = 'CLEANED';           % 'string': Saved result whose clean segments are joined together
 OPTIONS.APPENDED.outputName   = 'APPEND';            % 'string': Name the joined result is saved under
@@ -175,6 +175,6 @@ OPTIONS.APPENDED.saveData     = OPTIONS.saveData;    % 'string': Save the result
 OPTIONS.APPENDED.overwrite    = 'no';                % 'string': 'yes' = redo and replace an existing result; 'no' = skip subjects that already have it
 
 %% Subject summary collection options
-% Collects the information of all subjects in one file. See bv_collectSubjectSummary
+% Collects the information of all subjects in one file. See collectSubjectSummary
 OPTIONS.SUBJECTSUMMARY.outputFile = 'SubjectSummary.csv'; % 'string': Name of the summary file with one row per subject (saved in the summary folder, PATHS.SUMMARY)
 OPTIONS.SUBJECTSUMMARY.pathsFcn   = OPTIONS.pathsScript;  % 'string': Name of the paths script (normally leave as is)

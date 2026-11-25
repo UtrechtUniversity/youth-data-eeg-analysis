@@ -27,7 +27,7 @@ OPTIONS.triallength = 3;          % [ number ]: Length (seconds) of the epochs t
 % is the joined clean data (APPEND), not CLEANED: CLEANED only holds separate
 % 1 s segments, whereas APPEND joins consecutive clean segments into longer
 % stretches, which are needed to cut epochs of 3s.
-% See bv_redefineTriallength
+% See redefineTrialLength
 OPTIONS.EPOCH.inputName    = 'APPEND';            % 'string': Saved result that is cut into epochs (the joined clean data)
 OPTIONS.EPOCH.outputName   = 'EPOCHS';            % 'string': Name the epochs are saved under
 OPTIONS.EPOCH.triallength  = OPTIONS.triallength; % [ number ]: Length of each epoch in seconds
@@ -38,7 +38,7 @@ OPTIONS.EPOCH.overwrite    = 'yes';               % 'string': 'yes' = redo and r
 
 %% Artefact detection on the epoched data
 % Measures the artefacts in every epoch, with the same measures as in the
-% preprocessing. See bv_createArtefactStruct
+% preprocessing. See createArtefactStruct
 OPTIONS.ARTFCTEPOCH.inputName    = 'EPOCHS';                                   % 'string': Saved epochs the artefacts are calculated on
 OPTIONS.ARTFCTEPOCH.outputName   = 'ARTFCTEPOCHS';                             % 'string': Name the artefact values are saved under
 OPTIONS.ARTFCTEPOCH.saveData     = OPTIONS.saveData;                           % 'string': Save the result of this step in the subject's folder: 'yes' or 'no'
@@ -51,7 +51,7 @@ OPTIONS.ARTFCTEPOCH.analyses     = {'kurtosis','variance', 'flatline', 'abs'}; %
 %% Remove artefact-contaminated epochs
 % Removes the epochs with artefacts: an epoch that exceeds any of the
 % thresholds below is discarded. These thresholds are intentionally the same
-% as in the clean-data step of setOptions.m (same rejection criteria, now
+% as in the clean-data step of setOptionsPreproc.m (same rejection criteria, now
 % applied to each 3 s epoch). We suggest to keep them in sync. The
 % connectivity step (setOptionsNetmet.m) checks its epochs against the same
 % limits.
@@ -65,7 +65,7 @@ epochLims.flatline = 0.1;   % [ number ]: flat-signal measure (1 ./ SD.^2); high
 epochLims.kurtosis = 10;    % [ number ]: peakedness of the signal distribution
 epochLims.variance = 2000;  % [ number ]: variance of the signal (uV^2)
 
-% See bv_cleanData
+% See cleanData
 OPTIONS.CLEANEPOCHS.pathsFcn       = OPTIONS.pathsScript; % 'string': Name of the paths script (normally leave as is)
 OPTIONS.CLEANEPOCHS.inputName      = 'EPOCHS';            % 'string': Saved epochs the bad ones are removed from
 OPTIONS.CLEANEPOCHS.artefactData   = 'ARTFCTEPOCHS';      % 'string': Saved artefact values to use (from the artefact step above)
@@ -82,7 +82,7 @@ OPTIONS.CLEANEPOCHS.dataLossLabel  = 'dataLoss';          % 'string': Name under
 OPTIONS.CLEANEPOCHS.expectedtrials = [];                  % [ number ]: Number of epochs expected per subject (only needed if calculateDataloss = 'yes'); [] = not used
 
 %% Frequency analysis options
-% Calculates the power spectrum of every clean epoch. See bv_calculateFrequency
+% Calculates the power spectrum of every clean epoch. See calculateFrequency
 OPTIONS.FREQUENCY.inputName   = 'CLEANEPOCHS';       % 'string': Saved clean epochs the power spectra are calculated on
 OPTIONS.FREQUENCY.outputName  = 'FREQ';              % 'string': Name the spectra are saved under
 OPTIONS.FREQUENCY.method      = 'mtmfft';            % 'string': Spectral method: 'mtmfft' = multitaper Fourier transform (see ft_freqanalysis)
@@ -96,7 +96,7 @@ OPTIONS.FREQUENCY.overwrite   = 'yes';               % 'string': 'yes' = redo an
 
 %% ROI power extraction options
 % Calculates the power per frequency band in regions of interest (ROIs),
-% for every epoch, every condition and over all epochs. See bv_extractROIPower
+% for every epoch, every condition and over all epochs. See extractROIPower
 % Regions of interest: each name is followed by the channels it consists of
 ROI = struct;
 ROI.Frontal       = {'Fp1','Fp2','AF3','AF4','Fz'};
@@ -131,12 +131,12 @@ OPTIONS.ROIPOWER.pathsFcn        = OPTIONS.pathsScript;     % 'string': Name of 
 OPTIONS.ROIPOWER.overwrite       = 'yes';                   % 'string': 'yes' = redo and replace an existing result; 'no' = skip subjects that already have it
 
 %% Power summary collection options
-% Collects the power of all subjects in one file. See bv_collectPowerSummary
+% Collects the power of all subjects in one file. See collectPowerSummary
 OPTIONS.POWERSUMMARY.inputName  = 'POWER';             % 'string': Saved per-subject power result to collect
 OPTIONS.POWERSUMMARY.outputFile = 'power_summary.csv'; % 'string': Name of the summary file with the power of all subjects (saved in the summary folder, PATHS.SUMMARY)
 OPTIONS.POWERSUMMARY.pathsFcn   = OPTIONS.pathsScript; % 'string': Name of the paths script (normally leave as is)
 
 %% Subject summary collection options
-% Collects the information of all subjects in one file. See bv_collectSubjectSummary
+% Collects the information of all subjects in one file. See collectSubjectSummary
 OPTIONS.SUBJECTSUMMARY.outputFile = 'SubjectSummary.csv'; % 'string': Name of the summary file with one row per subject (saved in the summary folder, PATHS.SUMMARY)
 OPTIONS.SUBJECTSUMMARY.pathsFcn   = OPTIONS.pathsScript;  % 'string': Name of the paths script (normally leave as is)

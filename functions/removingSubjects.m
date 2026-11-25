@@ -12,7 +12,7 @@ function removingSubjects(cfg, currSubject, reason)
 % row in it is updated too - except when running on a parallel worker
 % (parfor), where several workers writing the shared file at the same time
 % would overwrite each other's rows. In that case the summary is left to
-% BV_SYNCSUBJECTSUMMARY, which the calling script runs once the parallel
+% SYNCSUBJECTSUMMARY, which the calling script runs once the parallel
 % loop has finished (it also picks up subjects in ``PATHS.REMOVED``).
 %
 % If a folder with the same name already exists in ``PATHS.REMOVED`` (the
@@ -20,7 +20,7 @@ function removingSubjects(cfg, currSubject, reason)
 % is changed.
 %
 % Because Subject.mat is reloaded from disk, anything the caller changed in
-% its in-memory ``subjectdata`` must be saved (bv_saveData) before calling
+% its in-memory ``subjectdata`` must be saved (saveData) before calling
 % this function, or it is lost.
 %
 % Args:
@@ -44,7 +44,7 @@ pathsFcn = ft_getopt(cfg, 'pathsFcn', 'setPaths');
 eval(pathsFcn)
 
 subjectFolderPath = [PATHS.SUBJECTS filesep currSubject];
-evalc('[subjectdata, check] = bv_check4data(subjectFolderPath);');
+evalc('[subjectdata, check] = check4Data(subjectFolderPath);');
 if ~check %#ok<NODEF>
     error('removingSubjects:noSubject', ...
         '%s: cannot remove subject, Subject.mat not found in %s', currSubject, subjectFolderPath)
@@ -69,17 +69,17 @@ end
 subjectdata.removedReason = reason;
 
 % flag the subject in place first, so it is marked even if the move fails
-evalc('bv_saveData(subjectdata);');
+evalc('saveData(subjectdata);');
 
 movefile(subjectFolderPath, PATHS.REMOVED)
 
 % point the subject at its new location and save Subject.mat there
 subjectdata.PATHS.SUBJECTDIR = removedFolderPath;
-evalc('bv_saveData(subjectdata);');
+evalc('saveData(subjectdata);');
 
 onWorker = exist('getCurrentTask', 'file') && ~isempty(getCurrentTask());
 if ~onWorker && exist([PATHS.SUMMARY filesep 'SubjectSummary.mat'], 'file')
-    bv_updateSubjectSummary([PATHS.SUMMARY filesep 'SubjectSummary'], bv_stripSummaryOnlyFields(subjectdata))
+    updateSubjectSummary([PATHS.SUMMARY filesep 'SubjectSummary'], stripSummaryOnlyFields(subjectdata))
 end
 fprintf('done! \n')
 end

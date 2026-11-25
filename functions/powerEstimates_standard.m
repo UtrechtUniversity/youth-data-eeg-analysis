@@ -7,13 +7,13 @@
 % removingSubjects) and left out of the next steps. After every step the
 % subject's Subject.mat is merged into the shared SubjectSummary.mat.
 %
-% Variants of this script (bv_createNewAnalysis picks the one that matches
+% Variants of this script (createNewAnalysis picks the one that matches
 % your preprocessingData script):
-%   powerEstimates_standard                      this script
-%   powerEstimates_standard_parfor               same, in parallel
-%   powerEstimates_standard_withoutSave          one pass per subject, only
-%                                                the power estimates saved
-%   powerEstimates_standard_withoutSave_parfor   same, in parallel
+%   powerEstimates_standard             this script
+%   powerEstimates_parfor               same, in parallel
+%   powerEstimates_withoutSave          one pass per subject, only
+%                                       the power estimates saved
+%   powerEstimates_parfor_withoutSave   same, in parallel
 %
 
 %% settings
@@ -22,7 +22,7 @@ quiet = 'no';
 %% EPOCH INTO SLIDING WINDOWS
 clear OPTIONS; setOptionsPower
 
-[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+[startSubject, endSubject, subjectFolderNames] = getSubjectRange(1, 'end');
 subjectFolderNames = subjectFolderNames(startSubject:endSubject);
 
 for iSubjects = 1:numel(subjectFolderNames)
@@ -33,17 +33,17 @@ for iSubjects = 1:numel(subjectFolderNames)
     cfg.quiet       = quiet;
 
     try
-        data = bv_redefineTriallength(cfg);
+        data = redefineTrialLength(cfg);
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
-    bv_syncSubjectSummary(currSubject);
+    syncSubjectSummary(currSubject);
 end
 
 %% CALCULATE ARTEFACTS IN EPOCHED DATA
 clear OPTIONS; setOptionsPower
 
-[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+[startSubject, endSubject, subjectFolderNames] = getSubjectRange(1, 'end');
 subjectFolderNames = subjectFolderNames(startSubject:endSubject);
 
 for iSubjects = 1:numel(subjectFolderNames)
@@ -54,17 +54,17 @@ for iSubjects = 1:numel(subjectFolderNames)
     cfg.quiet       = quiet;
 
     try
-        artefactdef = bv_createArtefactStruct(cfg);
+        artefactdef = createArtefactStruct(cfg);
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
-    bv_syncSubjectSummary(currSubject);
+    syncSubjectSummary(currSubject);
 end
 
 %% REMOVE ARTEFACT-CONTAMINATED EPOCHS
 clear OPTIONS; setOptionsPower
 
-[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+[startSubject, endSubject, subjectFolderNames] = getSubjectRange(1, 'end');
 subjectFolderNames = subjectFolderNames(startSubject:endSubject);
 
 for iSubjects = 1:numel(subjectFolderNames)
@@ -75,17 +75,17 @@ for iSubjects = 1:numel(subjectFolderNames)
     cfg.quiet       = quiet;
 
     try
-        data = bv_cleanData(cfg);
+        data = cleanData(cfg);
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
-    bv_syncSubjectSummary(currSubject);
+    syncSubjectSummary(currSubject);
 end
 
 %% CALCULATE FREQUENCY SPECTRA
 clear OPTIONS; setOptionsPower
 
-[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+[startSubject, endSubject, subjectFolderNames] = getSubjectRange(1, 'end');
 subjectFolderNames = subjectFolderNames(startSubject:endSubject);
 
 for iSubjects = 1:numel(subjectFolderNames)
@@ -96,17 +96,17 @@ for iSubjects = 1:numel(subjectFolderNames)
     cfg.quiet       = quiet;
 
     try
-        freq = bv_calculateFrequency(cfg);
+        freq = calculateFrequency(cfg);
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
-    bv_syncSubjectSummary(currSubject);
+    syncSubjectSummary(currSubject);
 end
 
 %% EXTRACT ROI POWER
 clear OPTIONS; setOptionsPower
 
-[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+[startSubject, endSubject, subjectFolderNames] = getSubjectRange(1, 'end');
 subjectFolderNames = subjectFolderNames(startSubject:endSubject);
 
 for iSubjects = 1:numel(subjectFolderNames)
@@ -117,19 +117,19 @@ for iSubjects = 1:numel(subjectFolderNames)
     cfg.quiet       = quiet;
 
     try
-        powerData = bv_extractROIPower(cfg);
+        powerData = extractROIPower(cfg);
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
-    bv_syncSubjectSummary(currSubject);
+    syncSubjectSummary(currSubject);
 end
 
 %% COLLECT POWER SUMMARY (cross-subject CSV)
 clear OPTIONS; setOptionsPower
 
-bv_collectPowerSummary(OPTIONS.POWERSUMMARY);
+collectPowerSummary(OPTIONS.POWERSUMMARY);
 
 %% COLLECT SUBJECT SUMMARY (cross-subject CSV)
 clear OPTIONS; setOptionsPower
 
-bv_collectSubjectSummary(OPTIONS.SUBJECTSUMMARY);
+collectSubjectSummary(OPTIONS.SUBJECTSUMMARY);
