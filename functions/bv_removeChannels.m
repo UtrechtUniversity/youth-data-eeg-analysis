@@ -299,9 +299,10 @@ function layout = getRepairLayout(data, subjectdata)
 layout = 'biosemi32.lay';
 
 hdr = [];
-if isfield(subjectdata, 'PATHS') && isfield(subjectdata.PATHS, 'HDRFILE') && ...
-        exist(subjectdata.PATHS.HDRFILE, 'file')
-    evalc('hdr = ft_read_header(subjectdata.PATHS.HDRFILE);');
+if isfield(subjectdata, 'PATHS') && isfield(subjectdata.PATHS, 'HDRFILES') && ...
+        ~isempty(subjectdata.PATHS.HDRFILES) && exist(subjectdata.PATHS.HDRFILES{1}, 'file')
+    % the parts of a session have the same channels, so the first one will do
+    evalc('hdr = ft_read_header(subjectdata.PATHS.HDRFILES{1});');
 elseif isfield(data, 'hdr')
     hdr = data.hdr;
 end

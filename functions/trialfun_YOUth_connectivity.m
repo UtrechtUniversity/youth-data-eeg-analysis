@@ -13,7 +13,11 @@ function [trl, event] = trialfun_YOUth_connectivity(cfg)
 % end of the recording is cut off at the last sample, a trial that starts
 % before the first sample is dropped, and a trial that overlaps the next one
 % is ended one sample before the next trial starts. The trials are returned
-% sorted by start sample.
+% sorted by start sample. Events on the first sample of a part after the
+% first are ignored (the status channel can still hold the trigger of the
+% previous part there). A trial is never cut off where two parts of a
+% stitched recording meet: it simply continues into the next part (see
+% ``cfg.partOffsets``).
 %
 % An empty ``trl`` (``[]``) is returned when the recording has no STATUS
 % triggers, is shorter than ``cfg.trialdef.posttrig`` seconds, or has none
@@ -21,9 +25,17 @@ function [trl, event] = trialfun_YOUth_connectivity(cfg)
 % FT_DEFINETRIAL errors on an empty trl.
 %
 % Args:
-%     cfg.dataset (str): Raw data file to read the events from.
-%     cfg.headerfile (str, optional): File to read the header from. Defaults
-%         to ``cfg.dataset``.
+%     cfg.dataset (str or cell array of str): Raw data file(s) to read the
+%         events from. Several files are the parts of one stitched
+%         recording, in the order they are stitched in.
+%     cfg.headerfile (str or cell array of str, optional): File(s) to read
+%         the header from, one per entry of ``cfg.dataset``. Defaults to
+%         ``cfg.dataset``.
+%     cfg.partOffsets (numeric, optional): For every part, the number of
+%         samples (at ``cfg.Fs``) in the stitched data before that part
+%         starts, including the padding of the gaps between the parts.
+%         Defaults to ``0`` for every part, which is right for a single
+%         file.
 %     cfg.Fs (numeric, optional): Sampling rate (Hz) the trl samples are
 %         expressed in, i.e. the rate of the data the trl will be applied
 %         to. Defaults to the sampling rate of the raw file.
@@ -37,7 +49,8 @@ function [trl, event] = trialfun_YOUth_connectivity(cfg)
 %         samples, ``-pretrig * cfg.Fs``) and condition code (129 or 139)
 %         per trial; ``[]`` if no trials were found.
 %     event (struct): The STATUS events of the recording (all values, not
-%         only 129/139).
+%         only 129/139). For stitched recordings, the events of all parts
+%         one after the other, with the samples of their own file.
 %
 % Example:
 %     ```matlab
@@ -60,34 +73,62 @@ cfg.trialdef.pretrig            = ft_getopt(cfg.trialdef, 'pretrig', 0);
 cfg.trialdef.posttrig           = ft_getopt(cfg.trialdef, 'posttrig', 60);
 cfg.headerfile                  = ft_getopt(cfg, 'headerfile', cfg.dataset);
 
-% load event and hdr
-event = ft_read_event(cfg.dataset);
-hdr = ft_read_header(cfg.headerfile);
-cfg.Fs = ft_getopt(cfg, 'Fs', hdr.Fs);
+datasets  = cellstr(cfg.dataset);
+hdrfiles  = cellstr(cfg.headerfile);
+nParts    = numel(datasets);
+offsets   = ft_getopt(cfg, 'partOffsets', zeros(1, nParts));
+if numel(hdrfiles) ~= nParts || numel(offsets) ~= nParts
+    error('trialfun_YOUth_connectivity: cfg.dataset, cfg.headerfile and cfg.partOffsets must have one entry per part')
+end
 
-% remove all non-status triggers (and events without a value, which would
-% make the value and sample vectors below differ in length)
-EVtype = {event.type}';
-statusIndx = strcmp(EVtype, 'STATUS');
-event(~statusIndx) = [];
-event(cellfun(@isempty, {event.value})) = [];
+% load the events and the header of every part; the trigger samples are
+% converted to the sampling rate of the data file and moved to the position
+% of their part in the stitched recording
+event      = [];
+EVvalue    = [];
+EVsample   = [];
+nSamples   = 0;       % end of the (stitched) recording at cfg.Fs
+duration   = 0;       % amount of recorded data (s)
+for p = 1:nParts
+    partEvent = ft_read_event(datasets{p});
+    hdr = ft_read_header(hdrfiles{p});
+    if p == 1
+        cfg.Fs = ft_getopt(cfg, 'Fs', hdr.Fs);
+    end
 
-EVvalue = [event.value]';
+    % remove all non-status triggers (and events without a value, which
+    % would make the value and sample vectors below differ in length)
+    partEvent(~strcmp({partEvent.type}, 'STATUS')) = [];
+    partEvent(cellfun(@isempty, {partEvent.value})) = [];
+
+    % a part can start while the status channel still holds the trigger
+    % value of the previous part, which reads as a trigger on the first
+    % sample; that is the continuation of a trigger, not a new one
+    if p > 1
+        partEvent([partEvent.sample] == 1) = [];
+    end
+
+    if isempty(event)
+        event = partEvent(:);
+    else
+        event = [event; partEvent(:)]; %#ok<AGROW>
+    end
+    EVvalue  = [EVvalue; [partEvent.value]']; %#ok<AGROW>
+    EVsample = [EVsample; ceil((cfg.Fs * [partEvent.sample]') ./ hdr.Fs) + offsets(p)]; %#ok<AGROW>
+
+    % length of the recording at the sampling rate of the data (rounded
+    % down, so a trial never ends beyond the resampled data)
+    nSamples = offsets(p) + floor(hdr.nSamples * cfg.Fs / hdr.Fs);
+    duration = duration + hdr.nSamples / hdr.Fs;
+end
+
 if isempty(EVvalue)
     trl = [];
     return
-elseif hdr.nSamples/hdr.Fs<cfg.trialdef.posttrig
+elseif duration < cfg.trialdef.posttrig
     trl = [];
     return
 end
-
-% convert the trigger samples to the sampling rate of the data file
-EVsample = [event.sample]';
-EVsample = ceil((cfg.Fs * EVsample) ./ hdr.Fs);
-
-% length of the recording at that sampling rate (rounded down, so a trial
-% never ends beyond the resampled data)
-nSamples = floor(hdr.nSamples * cfg.Fs / hdr.Fs);
 
 % only select the trigger values of interest
 triggerValues = [129 139];

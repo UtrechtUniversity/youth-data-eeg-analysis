@@ -11,6 +11,18 @@ function bv_createSubjectFolders_NewStruct(cfg)
 % ``removingSubjects``) rather than aborting the run. Finishes by writing
 % ``SubjectSummary.mat`` to ``PATHS.SUMMARY``.
 %
+% Several raw files can belong to one session (e.g. a recording that was
+% interrupted and continued in a second file). With ``cfg.stitchFiles =
+% 'yes'`` (bdf/edf only), all files that resolve to the same subject name
+% become the parts of one subject. Their headers are read and compared
+% (see ``bv_matchRawFiles``): parts that can't be matched (unreadable,
+% truncated, other sampling rate or channels, too far away in time,
+% overlapping) are dropped, the others are sorted by the start time in
+% their header. Everything is recorded in the Subject.mat, see Fields set
+% below. If no part is usable, the subject is removed. With
+% ``cfg.stitchFiles = 'no'``, every file is a subject of its own, and a
+% second file with the same name gets the suffix ``_2``.
+%
 % Args:
 %     cfg.rawdelim (str): Delimiter used when joining parts of the
 %         subject folder name (usually ``'_'``).
@@ -41,10 +53,26 @@ function bv_createSubjectFolders_NewStruct(cfg)
 %         ``PATHS``. Defaults to ``'setPaths'``.
 %     cfg.overwrite (str, optional): Whether to re-create subject folders
 %         that already exist in ``SubjectSummary`` (``'yes'`` or
-%         ``'no'``). When ``'no'``, raw files already present in
-%         ``PATHS.DATAFILE`` are skipped, and a resolved subject is
-%         merged into ``SubjectSummary`` by ``subjectName`` (replacing an
-%         existing row rather than duplicating it). Defaults to ``'no'``.
+%         ``'no'``). When ``'no'``, a subject whose raw files (paths and
+%         sizes) were all processed before is skipped, and a resolved
+%         subject is merged into ``SubjectSummary`` by ``subjectName``
+%         (replacing an existing row rather than duplicating it). If the
+%         raw files of an existing subject changed (a part was added,
+%         removed or replaced; only with ``cfg.stitchFiles = 'yes'``), the
+%         subject is created again under the same name, and its old folder
+%         with all results is deleted, so that no later step reuses
+%         results of the old file set. Defaults to ``'no'``. Does not
+%         apply to ``'mat'``.
+%     cfg.stitchFiles (str, optional): ``'yes'`` to treat the files that
+%         resolve to the same subject name as parts of one session
+%         (bdf/edf only), ``'no'`` to make a subject of every file.
+%         Defaults to ``'yes'``.
+%     cfg.maxGap (number, optional): Widest gap (s) allowed between two
+%         consecutive parts of a session; a part further away is dropped.
+%         Defaults to ``7*24*3600`` (one week).
+%     cfg.seamTolerance (number, optional): Gaps and overlaps between
+%         parts up to this size (s) are treated as 0, because the header
+%         start times only have a resolution of 1 s. Defaults to ``1``.
 %     cfg.inputName (str): Required when ``cfg.dataType`` is ``'mat'``.
 %         Name of the analysis step whose saved output is the input, e.g.
 %         ``'PREPROC'``. The ``.mat`` files are found under
@@ -52,9 +80,19 @@ function bv_createSubjectFolders_NewStruct(cfg)
 %         ``cfg.folderlabel``/``cfg.folderPattern``/``cfg.filePattern``),
 %         and of those only files named ``<subjectName>_<inputName>.mat``
 %         (case-insensitive) are used. The file's path is stored in
-%         ``subjectdata.PATHS.(upper(inputName))``. Note that skipping
-%         already-processed files with ``cfg.overwrite = 'no'`` does not
-%         apply to ``'mat'``, since its ``PATHS.DATAFILE`` is ``'unknown'``.
+%         ``subjectdata.PATHS.(upper(inputName))``.
+%
+% Fields set in Subject.mat for the raw files:
+%     ``PATHS.DATAFILES`` and ``PATHS.HDRFILES`` hold the used raw files
+%     (cell arrays, sorted by start time; empty for ``'mat'``).
+%     ``rawFiles`` is a struct array with one element per file found for
+%     the session: ``file``, ``bytes``, ``startTime``, ``duration`` (s),
+%     ``nChannels``, ``fs``, ``status`` (``'used'`` or ``'dropped'``),
+%     ``reason`` (why it was dropped) and ``gapToPrevious`` (s since the
+%     end of the previous used file; 0 if contiguous). ``nRawFiles`` and
+%     ``nRawFilesUsed`` count the files found and used.
+%     ``rawFileSignature`` identifies the file set for the
+%     ``overwrite = 'no'`` check.
 %
 % Example:
 %     ```matlab
@@ -64,9 +102,9 @@ function bv_createSubjectFolders_NewStruct(cfg)
 %     cfg.dataType      = 'bdf';
 %     cfg.folderlabel   = {'wave', 'pseudo'};
 %     cfg.overwrite     = 'yes';
+%     cfg.stitchFiles   = 'yes';
 %     bv_createSubjectFolders_NewStruct(cfg);
 %     ```
-
 
 % --- read configuration ---
 pathsFcn        = ft_getopt(cfg, 'pathsFcn', 'setPaths');
@@ -79,16 +117,32 @@ folderPattern   = ft_getopt(cfg, 'folderPattern', []);
 filePattern     = ft_getopt(cfg, 'filePattern', '');
 dataType        = ft_getopt(cfg, 'dataType');
 overwrite       = ft_getopt(cfg, 'overwrite', 'no');
+stitchFiles     = ft_getopt(cfg, 'stitchFiles', 'yes');
+maxGap          = ft_getopt(cfg, 'maxGap', 7*24*3600);
+seamTolerance   = ft_getopt(cfg, 'seamTolerance', 1);
+
+% stitching needs the start time in the header, which only bdf/edf have
+isBdfEdf = any(strcmpi(dataType, {'bdf', 'edf'}));
+stitch   = strcmpi(stitchFiles, 'yes') && isBdfEdf;
 
 % load paths and options
 eval(pathsFcn);
 
-% --- build list of already-processed data files (for overwrite='no') ---
+% --- read the existing summary (for overwrite='no') ---
+% a raw file set that is already processed is recognised by its signature
+% (see fileSignature); a subject whose raw files changed since is redone
+existingNames      = {};
+existingSignatures = {};
 if strcmpi(overwrite, 'no')
     subjectdatasummary = table2struct(bv_createSubjectResults());
-    allDatafiles = cell(1, length(subjectdatasummary));
+    existingNames      = cell(1, length(subjectdatasummary));
+    existingSignatures = cell(1, length(subjectdatasummary));
     for i = 1:length(subjectdatasummary)
-        allDatafiles{i} = subjectdatasummary(i).PATHS.DATAFILE;
+        existingNames{i}      = subjectdatasummary(i).subjectName;
+        existingSignatures{i} = '';
+        if isfield(subjectdatasummary, 'rawFileSignature') && ischar(subjectdatasummary(i).rawFileSignature)
+            existingSignatures{i} = subjectdatasummary(i).rawFileSignature;
+        end
     end
 else
     overwrite = 'yes';
@@ -116,11 +170,24 @@ if isempty(files)
     end
 end
 
-% --- filter out already-processed files ---
-if strcmpi(overwrite, 'no')
-    fullPaths = arrayfun(@(f) fullfile(f.folder, f.name), files, 'UniformOutput', false);
-    files = files(~ismember(fullPaths, allDatafiles));
+% --- resolve the subject name of every file and group the files ---
+% with stitching, the files that resolve to the same subject are the
+% parts of one session; otherwise every file is a session of its own
+nFiles    = length(files);
+fileMeta  = cell(1, nFiles);
+resolved  = false(1, nFiles);
+groupKeys = cell(1, nFiles);
+for f = 1:nFiles
+    [fileMeta{f}, resolved(f)] = resolveSubjectMeta(files(f), PATHS.RAWS, folderlabel, ...
+        inputnames, rawdelim, sfolderstruct);
+    if stitch && resolved(f)
+        groupKeys{f} = fileMeta{f}.subjectName;
+    else
+        groupKeys{f} = fullfile(files(f).folder, files(f).name);
+    end
 end
+[~, ~, groupOfFile] = unique(groupKeys, 'stable');
+nGroups = max(groupOfFile);
 
 if ~exist(PATHS.SUBJECTS, 'dir'); mkdir(PATHS.SUBJECTS); end
 
@@ -128,72 +195,47 @@ removingSubjectsCfg = [];
 removingSubjectsCfg.pathsFcn = pathsFcn;
 
 nSubjects = 0;
-for subjIndex = 1:length(files)
-    subjectdata = struct();
-    [~, cFile] = fileparts(files(subjIndex).name);
+for groupIndex = 1:nGroups
+    groupFiles = files(groupOfFile == groupIndex);
+    firstMeta  = fileMeta{find(groupOfFile == groupIndex, 1)};
+    nameResolved = resolved(find(groupOfFile == groupIndex, 1));
 
-    % --- resolve metadata and subject folder name ---
-    try
-        % extract metadata from folder levels
-        if startsWith(files(subjIndex).folder, PATHS.RAWS)
-            relativePath = files(subjIndex).folder(length(PATHS.RAWS)+1:end);
-        else
-            relativePath = files(subjIndex).folder;
+    subjectdata = firstMeta;
+    signature   = fileSignature(groupFiles);
+
+    % --- skip or redo sessions that were processed before (overwrite='no') ---
+    replacing = false;
+    if strcmpi(overwrite, 'no') && ~strcmpi(dataType, 'mat')
+        if any(strcmp(signature, existingSignatures))
+            continue
         end
-        if ~isempty(relativePath) && relativePath(1) == filesep
-            relativePath = relativePath(2:end);
+        if stitch && nameResolved && any(strcmp(subjectdata.subjectName, existingNames))
+            % same session, different raw files: parts were added, removed
+            % or replaced, so everything made from the old set is outdated
+            replacing = true;
         end
-        folderParts = strsplit(relativePath, filesep);
-
-        for i = 1:min(length(folderParts), length(folderlabel))
-            if ~isempty(folderlabel{i})
-                subjectdata.(folderlabel{i}) = folderParts{i};
-            end
-        end
-
-        % optionally extract metadata from filename parts
-        if ~isempty(inputnames)
-            localInputnames = inputnames;
-            splitFile = strsplit(cFile, rawdelim);
-
-            inputdiff = length(splitFile) - length(localInputnames);
-            if inputdiff > 0
-                localInputnames = [localInputnames, cell(1, inputdiff)];
-            elseif inputdiff < 0
-                localInputnames = localInputnames(1:length(localInputnames) + inputdiff);
-            end
-
-            validIdx = ~cellfun(@isempty, localInputnames);
-            splitFile       = splitFile(validIdx);
-            localInputnames = localInputnames(validIdx);
-
-            for i = 1:length(splitFile)
-                subjectdata.(localInputnames{i}) = splitFile{i};
-            end
-        end
-
-        % construct subject folder name from sfolderstruct fields
-        nameParts = cellfun(@(f) subjectdata.(f), sfolderstruct, 'UniformOutput', false);
-        subjectdata.subjectName = strjoin(nameParts, rawdelim);
-        nameResolved = true;
-    catch
-        % subject name could not be resolved from folder/filename metadata:
-        % fall back to the raw filename so the failure is still recorded
-        subjectdata = struct();
-        subjectdata.subjectName = cFile;
-        nameResolved = false;
     end
 
-    % suffix with a counter if a folder with this name already exists.
-    % contains() is used deliberately (not strcmp/exact match) so that
-    % earlier suffixed duplicates (e.g. 'B002_10m_2') are also counted
-    % when a third 'B002_10m' comes in - exact matching would miss them
-    % and start re-numbering from '_2' every time.
-    existingFolders = dir(PATHS.SUBJECTS);
-    existingFolders = existingFolders([existingFolders.isdir]);
-    nMatches = sum(contains({existingFolders.name}, subjectdata.subjectName));
-    if nMatches ~= 0
-        subjectdata.subjectName = [subjectdata.subjectName '_' num2str(nMatches + 1)];
+    if replacing
+        fprintf('%s: the raw files changed since the last run, redoing the subject\n', subjectdata.subjectName)
+        for staleDir = {fullfile(PATHS.SUBJECTS, subjectdata.subjectName), ...
+                fullfile(PATHS.REMOVED, subjectdata.subjectName)}
+            if exist(staleDir{1}, 'dir')
+                rmdir(staleDir{1}, 's');
+            end
+        end
+    else
+        % suffix with a counter if a folder with this name already exists.
+        % contains() is used deliberately (not strcmp/exact match) so that
+        % earlier suffixed duplicates (e.g. 'B002_10m_2') are also counted
+        % when a third 'B002_10m' comes in - exact matching would miss them
+        % and start re-numbering from '_2' every time.
+        existingFolders = dir(PATHS.SUBJECTS);
+        existingFolders = existingFolders([existingFolders.isdir]);
+        nMatches = sum(contains({existingFolders.name}, subjectdata.subjectName));
+        if nMatches ~= 0
+            subjectdata.subjectName = [subjectdata.subjectName '_' num2str(nMatches + 1)];
+        end
     end
 
     disp(subjectdata.subjectName);
@@ -234,44 +276,78 @@ for subjIndex = 1:length(files)
     end
 
     % --- resolve data file paths and read out acquisition date/time ---
+    subjectdata.rawFileSignature = signature;
     try
         switch dataType
             case 'eeg'
-                dataFile = fullfile(files(subjIndex).folder, [cFile '.eeg']);
-                hdrFile  = fullfile(files(subjIndex).folder, [cFile '.vhdr']);
+                % one session per file, see above
+                [~, cFile] = fileparts(groupFiles(1).name);
+                dataFile = fullfile(groupFiles(1).folder, [cFile '.eeg']);
+                hdrFile  = fullfile(groupFiles(1).folder, [cFile '.vhdr']);
                 if ~exist(dataFile, 'file')
                     error('dataFile: %s not found!', dataFile)
                 elseif ~exist(hdrFile, 'file')
                     error('headerfile: %s not found!', hdrFile)
                 end
+                subjectdata.rawFiles = placeholderFileInfo(dataFile, groupFiles(1).bytes);
+                usedFiles = {dataFile};
+                hdrFiles  = {hdrFile};
 
             case {'edf', 'bdf', 'EDF', 'BDF'}
-                dataFile = fullfile(files(subjIndex).folder, files(subjIndex).name);
-                hdrFile  = dataFile;
-                if ~exist(dataFile, 'file')
-                    error('dataFile: %s not found!', dataFile)
+                % read the headers, then keep the files that match each
+                % other and put them in order of their start time
+                paths = arrayfun(@(f) fullfile(f.folder, f.name), groupFiles, 'UniformOutput', false);
+                infos = bv_readRawFileInfo(paths{1});
+                for k = 2:numel(paths)
+                    infos(k) = bv_readRawFileInfo(paths{k});
                 end
+                matchCfg = [];
+                matchCfg.maxGap        = maxGap;
+                matchCfg.seamTolerance = seamTolerance;
+                matched = bv_matchRawFiles(infos, matchCfg);
+
+                subjectdata.rawFiles = rmfield(matched, ...
+                    {'readable', 'nRecords', 'recordDuration', 'labels', 'samplesPerRecord'});
+                isUsed = strcmp({matched.status}, 'used');
+                for k = find(~isUsed)
+                    [~, droppedName, droppedExt] = fileparts(matched(k).file);
+                    fprintf('\t dropping %s%s: %s\n', droppedName, droppedExt, matched(k).reason)
+                end
+                if ~any(isUsed)
+                    reasons = cell(1, numel(matched));
+                    for k = 1:numel(matched)
+                        [~, droppedName, droppedExt] = fileparts(matched(k).file);
+                        reasons{k} = sprintf('%s%s: %s', droppedName, droppedExt, matched(k).reason);
+                    end
+                    error('no usable raw file (%s)', strjoin(reasons, '; '))
+                end
+                usedFiles = {matched(isUsed).file};
+                hdrFiles  = usedFiles;
 
             case 'mat'
-                dataFile = 'unknown';
-                hdrFile  = 'unknown';
-                subjectdata.PATHS.(upper(inputName)) = fullfile(files(subjIndex).folder, files(subjIndex).name);
-                if ~exist(subjectdata.PATHS.(upper(inputName)), 'file')
-                    error('dataFile: %s not found!', subjectdata.PATHS.(upper(inputName)))
+                matFile = fullfile(groupFiles(1).folder, groupFiles(1).name);
+                subjectdata.PATHS.(upper(inputName)) = matFile;
+                if ~exist(matFile, 'file')
+                    error('dataFile: %s not found!', matFile)
                 end
+                subjectdata.rawFiles = placeholderFileInfo(matFile, groupFiles(1).bytes);
+                usedFiles = {};
+                hdrFiles  = {};
 
             otherwise
                 error('unknown datatype: %s', dataType);
         end
 
-        subjectdata.PATHS.DATAFILE = dataFile;
-        subjectdata.PATHS.HDRFILE  = hdrFile;
-        [~, subjectdata.filename, ~] = fileparts(subjectdata.PATHS.DATAFILE);
+        subjectdata.PATHS.DATAFILES = usedFiles;
+        subjectdata.PATHS.HDRFILES  = hdrFiles;
+        subjectdata.nRawFiles       = numel(subjectdata.rawFiles);
+        subjectdata.nRawFilesUsed   = sum(strcmp({subjectdata.rawFiles.status}, 'used'));
 
         % the recording start date/time can only be read from the header of
-        % a bdf/edf file; for other data types it is not available here
-        if any(strcmpi(dataType, {'bdf', 'edf'}))
-            [subjectdata.testDate, subjectdata.testTime] = bv_readOutDateAndTimeBdf(dataFile);
+        % a bdf/edf file (of the first used one); for other data types it
+        % is not available here
+        if isBdfEdf
+            [subjectdata.testDate, subjectdata.testTime] = bv_readOutDateAndTimeBdf(usedFiles{1});
         else
             subjectdata.testDate = 'unknown';
             subjectdata.testTime = 'unknown';
@@ -312,7 +388,7 @@ for subjIndex = 1:length(files)
             end
         end
     else
-        % index by nSubjects+1 (not subjIndex) so that files skipped via
+        % index by nSubjects+1 (not groupIndex) so that sessions skipped via
         % continue above never leave gaps with subjectName = [] in the
         % struct array - those gaps corrupt every later
         % ismember(...subjectName) lookup against SubjectSummary.mat
@@ -338,6 +414,86 @@ fprintf('done \n')
 
 % logstrct.totalStartSubjects = nSubjects;
 % bv_updateLog([PATHS.ROOT filesep 'log.txt'], logstrct);
+
+
+% =========================================================================
+function [subjectdata, nameResolved] = resolveSubjectMeta(file, rawsPath, folderlabel, inputnames, rawdelim, sfolderstruct)
+% Collect the metadata of a raw file from its folder levels and file name
+% and build the subject name from it. If the name cannot be resolved, the
+% raw file name is used instead, so the failure is still recorded.
+
+subjectdata = struct();
+[~, cFile] = fileparts(file.name);
+try
+    % extract metadata from folder levels
+    if startsWith(file.folder, rawsPath)
+        relativePath = file.folder(length(rawsPath)+1:end);
+    else
+        relativePath = file.folder;
+    end
+    if ~isempty(relativePath) && relativePath(1) == filesep
+        relativePath = relativePath(2:end);
+    end
+    folderParts = strsplit(relativePath, filesep);
+
+    for i = 1:min(length(folderParts), length(folderlabel))
+        if ~isempty(folderlabel{i})
+            subjectdata.(folderlabel{i}) = folderParts{i};
+        end
+    end
+
+    % optionally extract metadata from filename parts
+    if ~isempty(inputnames)
+        localInputnames = inputnames;
+        splitFile = strsplit(cFile, rawdelim);
+
+        inputdiff = length(splitFile) - length(localInputnames);
+        if inputdiff > 0
+            localInputnames = [localInputnames, cell(1, inputdiff)];
+        elseif inputdiff < 0
+            localInputnames = localInputnames(1:length(localInputnames) + inputdiff);
+        end
+
+        validIdx = ~cellfun(@isempty, localInputnames);
+        splitFile       = splitFile(validIdx);
+        localInputnames = localInputnames(validIdx);
+
+        for i = 1:length(splitFile)
+            subjectdata.(localInputnames{i}) = splitFile{i};
+        end
+    end
+
+    % construct subject folder name from sfolderstruct fields
+    nameParts = cellfun(@(f) subjectdata.(f), sfolderstruct, 'UniformOutput', false);
+    subjectdata.subjectName = strjoin(nameParts, rawdelim);
+    nameResolved = true;
+catch
+    subjectdata = struct();
+    subjectdata.subjectName = cFile;
+    nameResolved = false;
+end
+
+
+% =========================================================================
+function signature = fileSignature(groupFiles)
+% One string that identifies a set of raw files: the sorted full paths and
+% sizes. When it changes (a file added, removed, replaced), the session
+% has to be processed again.
+
+parts = cell(1, numel(groupFiles));
+for i = 1:numel(groupFiles)
+    parts{i} = sprintf('%s|%d', fullfile(groupFiles(i).folder, groupFiles(i).name), groupFiles(i).bytes);
+end
+signature = strjoin(sort(parts), ';');
+
+
+% =========================================================================
+function info = placeholderFileInfo(file, bytes)
+% File record for raw files without a readable start time (eeg, mat), in
+% the same form bv_matchRawFiles gives for bdf/edf files.
+
+info = struct('file', file, 'bytes', bytes, 'reason', '', 'startTime', NaT, 'duration', NaN, ...
+    'nChannels', NaN, 'fs', NaN, 'status', 'used', 'gapToPrevious', NaN);
 
 
 % =========================================================================

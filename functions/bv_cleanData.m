@@ -28,7 +28,9 @@ function data = bv_cleanData(cfg, data, artefactdef)
 %     cfg.cleanEpochs (str, optional): Whether to remove the noisy
 %         trials (``'yes'``), i.e. those with an artefact metric above its
 %         limit in ``cfg.lims``, or to keep every trial (``'no'``; the
-%         artefact values are then not needed). The trial counts and the
+%         artefact values are then not needed). Trials with missing (NaN)
+%         samples, such as a trial with a gap between two stitched raw
+%         files has, are removed either way. The trial counts and the
 %         minimum below still apply. Defaults to ``'yes'``.
 %     cfg.minEpochs (int, optional): Minimum number of clean trials a
 %         subject needs. A subject with fewer is removed (see
@@ -198,8 +200,9 @@ if cleanEpochs
     [goodTrialIndx, badTrial] = bv_findCleanTrials(artefactdef, lims);
     sampleinfo = artefactdef.sampleinfo;
 else
-    goodTrialIndx = 1:numel(data.trial);
-    badTrial      = false(1, numel(data.trial));
+    % trials with missing (NaN) samples are never usable
+    badTrial      = cellfun(@(t) any(isnan(t(:))), data.trial);
+    goodTrialIndx = find(~badTrial);
     sampleinfo    = data.sampleinfo;
 end
 
@@ -232,7 +235,7 @@ if ~isempty(minEpochs) && length(goodTrialIndx) < minEpochs
     return
 end
 
-if cleanEpochs
+if cleanEpochs || any(badTrial)
     cfg = [];
     cfg.trl = [sampleinfo(goodTrialIndx,:), zeros(length(goodTrialIndx),1)];
     evalc('data = ft_redefinetrial(cfg, data);');

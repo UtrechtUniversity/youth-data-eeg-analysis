@@ -5,8 +5,8 @@ function s = bv_stripSummaryOnlyFields(s)
 % shouldn't be duplicated into the aggregate summary (SubjectSummary.mat /
 % SubjectSummary.csv), e.g. because they are large, or redundant
 % bookkeeping rather than something worth comparing across subjects:
-% ``filename``, ``trialfun``, ``cleanSampleInfo`` and
-% ``cleanSampleInfoPower``. To keep another field
+% ``rawFiles`` (the per-file details), ``trialfun``, ``cleanSampleInfo``
+% and ``cleanSampleInfoPower``. To keep another field
 % out of the summary, add it to ``excludeFields`` below.
 %
 % Works on a scalar subjectdata struct or a subjectdatasummary struct array
@@ -29,7 +29,7 @@ if ~isstruct(s)
         'Input must be a struct, got %s (e.g. from a subject without Subject.mat)', class(s))
 end
 
-excludeFields = {'filename', 'trialfun', 'cleanSampleInfo', 'cleanSampleInfoPower'};
+excludeFields = {'rawFiles', 'trialfun', 'cleanSampleInfo', 'cleanSampleInfoPower'};
 
 present = intersect(fieldnames(s), excludeFields);
 if ~isempty(present)

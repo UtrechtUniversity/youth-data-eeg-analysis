@@ -37,6 +37,9 @@ OPTIONS.CREATEFOLDERS.rawlabel      = {'pseudo', 'wave'};  % { cell }: Names for
 OPTIONS.CREATEFOLDERS.folderlabel   = {'wave', 'pseudo'};  % { cell }: Names for the folder levels below the raw data folder, in order
 OPTIONS.CREATEFOLDERS.folderPattern = {'', 'B'};           % { cell }: Text a folder name has to match, one per folder level; '' accepts every folder
 OPTIONS.CREATEFOLDERS.filePattern   = '';                  % 'string': Text a file name has to match; '' accepts every file
+OPTIONS.CREATEFOLDERS.stitchFiles   = 'yes';               % 'string': 'yes' = files with the same subject name (e.g. in the same folder) are parts of one session and are stitched together (bdf/edf only); 'no' = every file is a subject of its own (a second file with the same name gets the suffix _2)
+OPTIONS.CREATEFOLDERS.maxGap        = 7*24*3600;           % [ number ]: Widest gap (seconds) allowed between two parts of a session; a part further away is dropped
+OPTIONS.CREATEFOLDERS.seamTolerance = 1;                   % [ number ]: Gaps and overlaps between parts up to this size (seconds) count as 0, as the start time in the file header has a resolution of 1 s
 
 %% Preprocessing options
 % Reads the raw recording, resamples and filters it, and cuts it into trials

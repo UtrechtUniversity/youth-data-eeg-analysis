@@ -46,7 +46,8 @@ function [ connectivity ] = bv_calculatePLI(cfg, data)
 %         artefact metric named in ``cfg.lims`` is above its limit; the
 %         metrics are measured on every epoch of the broadband data and
 %         an noisy epoch is removed for all frequency bands, like in
-%         BV_CLEANDATA. With ``'no'`` every epoch is kept.
+%         BV_CLEANDATA. With ``'no'`` every epoch is kept, except the
+%         ones with missing (NaN) samples.
 %         Defaults to ``'yes'``.
 %     cfg.lims (struct): Thresholds above which an epoch is discarded: one
 %         field per artefact metric (``abs``, ``flatline``, ``kurtosis``,
@@ -221,6 +222,25 @@ cfg.trialfun = '';
 evalc('origdata = bv_preprocResample(cfg);');
 if ~quiet; fprintf('done \n'); end
 
+% A recording stitched from raw files that were not directly after each
+% other holds NaN samples where the gap was, and a NaN would spread through
+% the filters below. The stretches in between are therefore filtered
+% separately; stretches too short to hold an epoch are left out.
+isMissing = any(isnan(origdata.trial{1}), 1);
+if any(isMissing)
+    change = diff([0, ~isMissing, 0]);
+    first  = find(change == 1);
+    last   = find(change == -1) - 1;
+    if ~isempty(triallength)
+        long  = (last - first + 1) >= round(triallength * origdata.fsample);
+        first = first(long);
+        last  = last(long);
+    end
+    cfg = [];
+    cfg.trl = [first' last' zeros(numel(first), 1)] + [1 1 0] * (origdata.sampleinfo(1, 1) - 1);
+    evalc('origdata = ft_redefinetrial(cfg, origdata);');
+end
+
 %% define the epochs and discard the artefact-contaminated ones
 % Done once on the broadband data (the same signal the power step checks),
 % so every frequency band uses the same epochs.
@@ -244,6 +264,10 @@ if ~any(keepEpoch)
     error('bv_calculatePLI: no epochs found for the requested condition')
 end
 nEpochs = sum(keepEpoch);
+
+% epochs with missing (NaN) samples are never usable, whether they are
+% clean on their artefact levels or not
+keepEpoch = keepEpoch & ~cellfun(@(t) any(isnan(t(:))), epochData.trial);
 
 if strcmpi(cleanEpochs, 'yes')
     cfgArt          = [];

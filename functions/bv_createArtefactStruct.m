@@ -40,8 +40,10 @@ function [artefactdef] = bv_createArtefactStruct(cfg, data)
 % Returns:
 %     artefactdef (struct): One field per computed metric in
 %         ``cfg.analyses`` (e.g. ``artefactdef.kurtosis.levels``, a
-%         channel x trial matrix), plus ``sampleinfo`` copied from the
-%         input data. Returns empty (``[]``) if output already exists and
+%         channel x trial matrix), plus ``missing`` (logical, channel x
+%         trial: the trial holds NaN samples, such as a trial that spans a gap
+%         between two stitched raw files ) and ``sampleinfo`` copied
+%         from the input data. Returns empty (``[]``) if output already exists and
 %         ``cfg.overwrite`` is ``'no'``, or if an error occurs while
 %         ``cfg.currSubject`` is set (the subject is skipped via
 %         removingSubjects and processing continues).
@@ -174,6 +176,9 @@ try
 
     if ~quiet; fprintf('\t calculating artefact levels ... '); end
     for i = 1:length(data.trial)
+        % NaN samples (missing data) make the metrics below NaN or leave
+        % them to the rest of the trial, so they are marked separately
+        artefactdef.missing(:,i) = any(isnan(data.trial{i}), 2);
         if doKurtosis
             artefactdef.kurtosis.levels(:,i) = kurtosis(data.trial{i}, [], 2);
         end

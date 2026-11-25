@@ -2,12 +2,15 @@ function [goodTrialIndx, badTrial] = bv_findCleanTrials(artefactdef, lims)
 % Finds the trials whose artefact levels stay within all limits.
 %
 % A trial is noisy if, for any channel and any metric in ``lims``, its level
-% is above the limit.
+% is above the limit. A trial that holds NaN samples in any channel
+% (``artefactdef.missing``, e.g. a trial that spans a gap between two
+% stitched raw files) is noisy as well, as its levels can't be trusted.
 %
 % Args:
 %     artefactdef (struct): Artefact struct from BV_CREATEARTEFACTSTRUCT.
 %         Must hold ``artefactdef.<metric>.levels`` (channel x trial) for
-%         every field of ``lims``.
+%         every field of ``lims``; ``artefactdef.missing`` is used if
+%         present.
 %     lims (struct): One field per artefact metric (``kurtosis``,
 %         ``variance``, ``jump``, ``abs``, ``range``, ``flatline``), each
 %         the number above which a trial is discarded.
@@ -29,6 +32,9 @@ badTrial  = false(1, size(artefactdef.(limFields{1}).levels, 2));
 for i = 1:length(limFields)
     cField   = limFields{i};
     badTrial = badTrial | any(artefactdef.(cField).levels > lims.(cField), 1);
+end
+if isfield(artefactdef, 'missing')
+    badTrial = badTrial | any(artefactdef.missing, 1);
 end
 goodTrialIndx = find(~badTrial);
 end
