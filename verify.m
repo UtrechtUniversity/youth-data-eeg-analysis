@@ -42,6 +42,16 @@ else
     disp('✓ All required toolboxes are installed and licensed.')
 end
 
+% Optional: only needed for the parallel (parfor) variants of the scripts.
+% Without it the pipeline still runs, just not in parallel.
+if license('test', 'Distrib_Computing_Toolbox')
+    disp('✓ Parallel Computing Toolbox installed and licensed (optional).')
+else
+    disp('⚠ Parallel Computing Toolbox not found (optional).')
+    disp('    The pipeline will run, but without parallel processing:')
+    disp('    choose "no" for parallel processing when creating an analysis.')
+end
+
 %% Fieldtrip
 thisFile = mfilename('fullpath');
 if ~contains(thisFile, 'verify') || isempty(thisFile)

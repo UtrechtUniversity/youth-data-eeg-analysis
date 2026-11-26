@@ -5,10 +5,10 @@
 /templates/
 /unused/
 /docs/
+/tests/
 
 *.asv
 
 .DS_Store
 
 /functions/waitbarCLI.m
-

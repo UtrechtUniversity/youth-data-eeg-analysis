@@ -1,4 +1,4 @@
-%% EEG COVID Pipeline
+%% EEG Connectivity Pipeline
 % This pipeline is meant to preprocess and analyse data from the YOUth
 % Cohort study. It is specifically suited to reproduce a network
 % connectivity analysis.
@@ -28,7 +28,7 @@ if makefolders == 1
     label         = "" ; % label to add to foldername
     overwrite     = true; % boolean [true or false] whether to overwrite earlier analysis with the same folder name
 
-    bv_createNewAnalysis(label,overwrite)
+    createNewAnalysis(label,overwrite)
 end
 
 %% Provide correct paths
@@ -40,7 +40,7 @@ setPaths
 
 %% Set options (optional)
 % If the default settings are okay, this step can be skipped
-% edit setOptions
+% edit setOptionsPreproc
 
 %% Preprocessing
 preprocessingData

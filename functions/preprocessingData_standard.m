@@ -1,15 +1,27 @@
-%% BEFORE WE START'
-% This is an overview script of all the preprocessing steps needed to be
-% taken before analyzing EEG data.
+%% PREPROCESSING PIPELINE
+% Overview script of all the preprocessing steps needed before analysing EEG
+% data. Every step runs over all subjects before the next step starts and
+% saves its output to the subject folder, so that a step can be redone
+% without redoing the earlier ones. A subject that fails a step is removed
+% (see REMOVINGSUBJECTS) and left out of the next steps. After every step
+% the subject's Subject.mat is merged into the shared SubjectSummary.mat.
+%
+% Variants of this script (CREATENEWANALYSIS picks one):
+%   preprocessingData_standard             this script
+%   preprocessingData_parfor               same, in parallel
+%   preprocessingData_withoutSave          one pass per subject,
+%                                          no intermediate files
+%   preprocessingData_parfor_withoutSave   same, in parallel
+
 %% setup subject folders
-clear OPTIONS; setOptions
+clear OPTIONS; setOptionsPreproc
 cfg = OPTIONS.CREATEFOLDERS;
-bv_createSubjectFolders_NewStruct(cfg);
+createSubjectFolders(cfg);
 
 %% PREPROCESSING AND RESAMPLING
-clear OPTIONS; setOptions
+clear OPTIONS; setOptionsPreproc
 
-[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+[startSubject, endSubject, subjectFolderNames] = getSubjectRange(1, 'end');
 for iSubjects = startSubject:endSubject
         currSubject = subjectFolderNames{iSubjects};
 
@@ -18,17 +30,17 @@ for iSubjects = startSubject:endSubject
         cfg.quiet       = 'no';
 
         try
-            data = bv_preprocResample(cfg);
+            data = preprocResample(cfg);
         catch ME
             removingSubjects([], currSubject, ME.message);
         end
-        bv_syncSubjectSummary(currSubject);
+        syncSubjectSummary(currSubject);
 end
 
 %% CALCULATE ARTEFACTS IN PREPROC DATA
-clear OPTIONS; setOptions
+clear OPTIONS; setOptionsPreproc
 
-[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+[startSubject, endSubject, subjectFolderNames] = getSubjectRange(1, 'end');
 for iSubjects = startSubject:endSubject
     currSubject = subjectFolderNames{iSubjects};
 
@@ -37,17 +49,17 @@ for iSubjects = startSubject:endSubject
     cfg.currSubject = currSubject;
 
     try
-        artefactdef = bv_createArtefactStruct(cfg);
+        artefactdef = createArtefactStruct(cfg);
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
-    bv_syncSubjectSummary(currSubject);
+    syncSubjectSummary(currSubject);
 end
 
 %% SET CHANNELS TO REMOVE
-clear OPTIONS; setOptions
+clear OPTIONS; setOptionsPreproc
 
-[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+[startSubject, endSubject, subjectFolderNames] = getSubjectRange(1, 'end');
 for iSubjects = startSubject:endSubject
     currSubject = subjectFolderNames{iSubjects};
 
@@ -56,17 +68,17 @@ for iSubjects = startSubject:endSubject
     cfg.quiet       = 'no';
 
     try
-        data = bv_removeChannels(cfg);
+        data = removeChannels(cfg);
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
-    bv_syncSubjectSummary(currSubject);
+    syncSubjectSummary(currSubject);
 end
 
 %% PREPROCESSING AGAIN WITH REREF AND WITHOUT REMOVED CHANNELS
-clear OPTIONS; setOptions
+clear OPTIONS; setOptionsPreproc
 
-[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+[startSubject, endSubject, subjectFolderNames] = getSubjectRange(1, 'end');
 for iSubjects = startSubject:endSubject
     currSubject = subjectFolderNames{iSubjects};
 
@@ -75,17 +87,17 @@ for iSubjects = startSubject:endSubject
     cfg.quiet       = 'no';
 
     try
-        data = bv_preprocResample(cfg);
+        data = preprocResample(cfg);
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
-    bv_syncSubjectSummary(currSubject);
+    syncSubjectSummary(currSubject);
 end
 
 %% CALCULATE ARTEFACTS IN EEG DATA WITHOUT POOR CHANNELS
-clear OPTIONS; setOptions
+clear OPTIONS; setOptionsPreproc
 
-[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+[startSubject, endSubject, subjectFolderNames] = getSubjectRange(1, 'end');
 for iSubjects = startSubject:endSubject
 
     currSubject = subjectFolderNames{iSubjects};
@@ -95,17 +107,17 @@ for iSubjects = startSubject:endSubject
     cfg.quiet       = 'no';
 
     try
-        artefactdef     = bv_createArtefactStruct(cfg);
+        artefactdef     = createArtefactStruct(cfg);
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
-    bv_syncSubjectSummary(currSubject);
+    syncSubjectSummary(currSubject);
 end
 
 %% REMOVE TRIALS
-clear OPTIONS; setOptions
+clear OPTIONS; setOptionsPreproc
 
-[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+[startSubject, endSubject, subjectFolderNames] = getSubjectRange(1, 'end');
 for iSubjects = startSubject:endSubject
 
     currSubject = subjectFolderNames{iSubjects};
@@ -115,17 +127,17 @@ for iSubjects = startSubject:endSubject
     cfg.quiet       = 'no';
 
     try
-        data = bv_cleanData(cfg);
+        data = cleanData(cfg);
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
-    bv_syncSubjectSummary(currSubject);
+    syncSubjectSummary(currSubject);
 end
 
 %% APPEND DATA
-clear OPTIONS; setOptions
+clear OPTIONS; setOptionsPreproc
 
-[startSubject, endSubject, subjectFolderNames] = bv_getSubjectRange(1, 'end');
+[startSubject, endSubject, subjectFolderNames] = getSubjectRange(1, 'end');
 for iSubjects = startSubject:endSubject
 
     currSubject     = subjectFolderNames{iSubjects};
@@ -134,14 +146,14 @@ for iSubjects = startSubject:endSubject
     cfg.quiet       = 'no';
 
     try
-        data = bv_appendfieldtripdata(cfg);
+        data = appendFieldtripData(cfg);
     catch ME
         removingSubjects([], currSubject, ME.message);
     end
-    bv_syncSubjectSummary(currSubject);
+    syncSubjectSummary(currSubject);
 end
 
 %% COLLECT SUBJECT SUMMARY (cross-subject CSV)
-clear OPTIONS; setOptions
+clear OPTIONS; setOptionsPreproc
 
-bv_collectSubjectSummary(OPTIONS.SUBJECTSUMMARY);
+collectSubjectSummary(OPTIONS.SUBJECTSUMMARY);
