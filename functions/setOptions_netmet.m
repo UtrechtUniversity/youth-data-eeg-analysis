@@ -72,7 +72,7 @@ OPTIONS.PLICONNECTIVITY.overwrite      = 'no';                                 %
 OPTIONS.PLICONNECTIVITY.freqBands      = freqBands;                            % struct: Frequency bands in Hz (defined above)
 OPTIONS.PLICONNECTIVITY.triallength    = OPTIONS.triallength;                  % [ number ]: Length (seconds) of the epochs the connectivity is calculated on (as in setOptionsPower.m)
 OPTIONS.PLICONNECTIVITY.overlap        = 2/3;                                  % [ number ]: Overlap between consecutive epochs as a fraction (0-1); 2/3 of 3 s epochs = a new epoch every 1 s (as in setOptionsPower.m); 0 = no overlap
-OPTIONS.PLICONNECTIVITY.cleanEpochs    = 'yes';                                % 'string': Remove the noisy epochs, those with an artefact measure above a limit in epochLims: 'yes' or 'no' ('no' keeps every epoch)
+OPTIONS.PLICONNECTIVITY.cleanEpochs    = 'no';                                 % 'string': Remove the noisy epochs, those with an artefact measure above a limit in epochLims: 'yes' or 'no' ('no' keeps every epoch)
 OPTIONS.PLICONNECTIVITY.lims           = epochLims;                            % struct: Thresholds above which an epoch is discarded (defined above)
 OPTIONS.PLICONNECTIVITY.minEpochs      = [];                                   % [ number ]: Minimum number of clean epochs a subject needs; a subject with fewer is removed. [] = no minimum (a subject is then only removed when no clean epoch is left)
 OPTIONS.PLICONNECTIVITY.ntrials        = 'all';                                % 'string': Number of epochs to use per subject; 'all' = every epoch

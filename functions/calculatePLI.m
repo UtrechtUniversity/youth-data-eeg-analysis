@@ -48,7 +48,7 @@ function [ connectivity ] = calculatePLI(cfg, data)
 %         an noisy epoch is removed for all frequency bands, like in
 %         CLEANDATA. With ``'no'`` every epoch is kept, except the
 %         ones with missing (NaN) samples.
-%         Defaults to ``'yes'``.
+%         Defaults to ``'no'``.
 %     cfg.lims (struct): Thresholds above which an epoch is discarded: one
 %         field per artefact metric (``abs``, ``flatline``, ``kurtosis``,
 %         ``variance``, see CLEANDATA). Required when
@@ -119,7 +119,7 @@ outputName      = ft_getopt(cfg, 'outputName');
 pathsFcn        = ft_getopt(cfg, 'pathsFcn', 'setPaths');
 triallength     = ft_getopt(cfg, 'triallength');
 overlap         = ft_getopt(cfg, 'overlap', 0);
-cleanEpochs     = ft_getopt(cfg, 'cleanEpochs', 'yes');
+cleanEpochs     = ft_getopt(cfg, 'cleanEpochs', 'no');
 lims            = ft_getopt(cfg, 'lims');
 minEpochs       = ft_getopt(cfg, 'minEpochs');
 keeptrials      = ft_getopt(cfg, 'keeptrials', 'no');
